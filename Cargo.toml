@@ -24,3 +24,7 @@ name = "bench"
 
 [[example]]
 name = "test"
+
+
+[[example]]
+name = "example"

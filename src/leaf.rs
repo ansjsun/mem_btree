@@ -66,6 +66,20 @@ where
         None
     }
 
+    pub fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
+        if let Ok(i) = self.items.binary_search_by(|v| v.0.cmp(k)) {
+            let mut items = Vec::with_capacity(self.items.len() - 1);
+            items.extend_from_slice(&self.items[..i]);
+            items.extend_from_slice(&self.items[i + 1..]);
+            return Some((Self::new(items), self.items[i].clone()));
+        }
+        None
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
     pub fn split_off(&self, _k: &K) -> (N<K, V>, N<K, V>) {
         todo!()
     }

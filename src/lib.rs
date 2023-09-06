@@ -48,6 +48,20 @@ where
             BTreeType::Node(node) => node.get(k),
         }
     }
+
+    fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
+        match self {
+            BTreeType::Leaf(leaf) => leaf.remove(k),
+            BTreeType::Node(node) => node.remove(k),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            BTreeType::Leaf(leaf) => leaf.len(),
+            BTreeType::Node(node) => node.len(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +102,16 @@ where
         }
 
         v
+    }
+
+    pub fn remove(&mut self, k: &K) -> Option<Item<K, V>> {
+        let (node, item) = self.root.remove(k)?;
+
+        self.root = node;
+
+        self.length -= 1;
+
+        Some(item)
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {

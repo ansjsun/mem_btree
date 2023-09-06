@@ -9,6 +9,7 @@ where
     V: Debug,
 {
     pub key: Option<Arc<K>>,
+    length: usize,
     children: Vec<N<K, V>>,
 }
 
@@ -27,7 +28,12 @@ where
         } else {
             children[0].key().cloned().map(|v| Arc::new(v))
         };
-        Arc::new(BTreeType::Node(Self { key, children }))
+        let length = children.iter().map(|v| v.len()).sum();
+        Arc::new(BTreeType::Node(Self {
+            key,
+            length,
+            children,
+        }))
     }
 
     pub fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>)
@@ -60,17 +66,23 @@ where
         self.children[self.search_index(k)].get(k)
     }
 
-    fn search_index(&self, k: &K) -> usize {
-        match self.children.binary_search_by(|c| cmp(c.key(), Some(&k))) {
-            Ok(i) => i,
-            Err(i) => {
-                if i == 0 {
-                    i
-                } else {
-                    i - 1
-                }
-            }
+    pub fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
+        let index = self.search_index(&k);
+
+        let (child, item) = self.children[index].remove(k)?;
+
+        let mut children = Vec::with_capacity(self.children.len() - 1);
+        children.extend(self.children[..index].iter().cloned());
+        if child.len() > 0 {
+            children.push(child);
         }
+        children.extend(self.children[index + 1..].iter().cloned());
+
+        Some((Self::new(children), item))
+    }
+
+    pub fn len(&self) -> usize {
+        self.length
     }
 
     pub fn split_off(&mut self, _k: &K) -> (N<K, V>, N<K, V>) {
@@ -85,5 +97,18 @@ where
         // }
 
         todo!()
+    }
+
+    fn search_index(&self, k: &K) -> usize {
+        match self.children.binary_search_by(|c| cmp(c.key(), Some(&k))) {
+            Ok(i) => i,
+            Err(i) => {
+                if i == 0 {
+                    i
+                } else {
+                    i - 1
+                }
+            }
+        }
     }
 }
