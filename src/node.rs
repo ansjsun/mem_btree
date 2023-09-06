@@ -85,18 +85,26 @@ where
         self.length
     }
 
-    pub fn split_off(&mut self, _k: &K) -> (N<K, V>, N<K, V>) {
-        // match self.children.binary_search_by(|c| cmp(c.key(), Some(&k))) {
-        //     Ok(i) => {
-        //         let mut left = self.children[..i].to_vec();
-        //         let mut right = self.children[i..].to_vec();
+    pub fn split_off(&self, k: &K) -> (N<K, V>, N<K, V>) {
+        let aaa = match self.children.binary_search_by(|c| cmp(c.key(), Some(&k))) {
+            Ok(index) => {
+                let (left, right) = self.children.split_at(index);
+                (Self::new(left.to_vec()), Self::new(right.to_vec()))
+            }
+            Err(index) => {
+                if index == 0 {
+                    (Self::new(Vec::new()), Self::new(self.children.clone()))
+                } else if index == self.children.len() {
+                    (Self::new(self.children.clone()), Self::new(Vec::new()))
+                } else {
+                    self.children[index].split_off(k)
+                }
+            }
+        };
 
-        //         return (Self::new(left), Self::new(right));
-        //     }
-        //     Err(_) => todo!(),
-        // }
+        println!("++++++========: {:?}", aaa);
 
-        todo!()
+        aaa
     }
 
     fn search_index(&self, k: &K) -> usize {

@@ -56,6 +56,13 @@ where
         }
     }
 
+    fn split_off(&self, k: &K) -> (N<K, V>, N<K, V>) {
+        match self {
+            BTreeType::Leaf(leaf) => leaf.split_off(k),
+            BTreeType::Node(node) => node.split_off(k),
+        }
+    }
+
     pub fn len(&self) -> usize {
         match self {
             BTreeType::Leaf(leaf) => leaf.len(),
@@ -112,6 +119,22 @@ where
         self.length -= 1;
 
         Some(item)
+    }
+
+    pub fn split_off(&mut self, k: &K) -> BTree<K, V> {
+        let (left, right) = self.root.split_off(k);
+
+        println!("++++++left: {:?}", left);
+        println!("++++++right: {:?}", right);
+
+        self.root = left;
+        self.length = self.root.len();
+
+        BTree {
+            m: self.m,
+            length: right.len(),
+            root: right,
+        }
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {

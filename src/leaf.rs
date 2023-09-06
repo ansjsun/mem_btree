@@ -80,7 +80,13 @@ where
         self.items.len()
     }
 
-    pub fn split_off(&self, _k: &K) -> (N<K, V>, N<K, V>) {
-        todo!()
+    pub fn split_off(&self, k: &K) -> (N<K, V>, N<K, V>) {
+        let index = self
+            .items
+            .binary_search_by(|v| v.0.cmp(k))
+            .unwrap_or_else(|i| i);
+
+        let (left, right) = self.items.split_at(index);
+        (Self::new(left.to_vec()), Self::new(right.to_vec()))
     }
 }
