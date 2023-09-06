@@ -1,0 +1,26 @@
+[package]
+name = "mem_btree"
+version = "0.1.0"
+edition = "2021"
+authors = ["Ansj <ansj-sun@163.com>"]
+license = "MIT OR Apache-2.0"
+categories = ["snapshot", "btree", "concurrency"]
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+
+
+[dev-dependencies]
+memory-stats = "1.0.0"
+rand = "0.8.5"
+
+
+[[example]]
+name = "bench"
+
+
+[[example]]
+name = "test"
