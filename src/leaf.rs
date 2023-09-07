@@ -87,10 +87,6 @@ where
             .unwrap_or_else(|i| i);
 
         let (left, right) = self.items.split_at(index);
-        println!(
-            "{}=================={:?}=============={:?}",
-            index, left, right
-        );
         (Self::new(left.to_vec()), Self::new(right.to_vec()))
     }
 }
