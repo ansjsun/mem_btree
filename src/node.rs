@@ -86,12 +86,14 @@ where
     }
 
     pub fn split_off(&self, k: &K) -> (N<K, V>, N<K, V>) {
-        let aaa = match self.children.binary_search_by(|c| cmp(c.key(), Some(&k))) {
+        let aaa = match self.children.binary_search_by(|c| cmp(c.key(), Some(k))) {
             Ok(index) => {
+                println!("ok index: {}", index);
                 let (left, right) = self.children.split_at(index);
                 (Self::new(left.to_vec()), Self::new(right.to_vec()))
             }
             Err(index) => {
+                println!("err index: {}----{}", index, self.children.len());
                 if index == 0 {
                     (Self::new(Vec::new()), Self::new(self.children.clone()))
                 } else if index == self.children.len() {
@@ -102,8 +104,10 @@ where
             }
         };
 
-        println!("++++++========: {:?}", aaa);
-
+        println!(
+            "{:?}++++++=xxx=======: {:#?}================right:{:?}",
+            k, aaa.0, aaa.1
+        );
         aaa
     }
 

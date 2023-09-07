@@ -12,7 +12,7 @@ pub fn main() {
         btree.put(i.clone(), i.clone());
     }
 
-    println!("btree: {:?}", btree);
+    println!("btree: {:#?}", btree);
 
     let right = btree.split_off(&16);
 

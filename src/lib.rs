@@ -123,10 +123,6 @@ where
 
     pub fn split_off(&mut self, k: &K) -> BTree<K, V> {
         let (left, right) = self.root.split_off(k);
-
-        println!("++++++left: {:?}", left);
-        println!("++++++right: {:?}", right);
-
         self.root = left;
         self.length = self.root.len();
 
