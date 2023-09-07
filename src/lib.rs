@@ -1,7 +1,7 @@
 mod leaf;
 mod node;
 
-use std::{fmt::Debug, sync::Arc};
+use std::{collections::LinkedList, fmt::Debug, sync::Arc};
 
 use leaf::Leaf;
 use node::Node;
@@ -68,6 +68,47 @@ where
             BTreeType::Leaf(leaf) => leaf.len(),
             BTreeType::Node(node) => node.len(),
         }
+    }
+}
+
+pub struct Iterator<K, V>
+where
+    K: Ord + Debug + Clone,
+    V: Debug,
+{
+    inner: BTree<K, V>,
+    queue: LinkedList<(N<K, V>, usize)>,
+    direction: bool, // true front false back
+}
+
+impl<K, V> Iterator<K, V>
+where
+    K: Ord + Debug + Clone,
+    V: Debug,
+{
+    fn new(inner: BTree<K, V>, direction: bool) -> Self {
+        let mut queue = LinkedList::new();
+        queue.push_back((inner.root.clone(), 0));
+
+        Self {
+            inner,
+            queue,
+            direction,
+        }
+    }
+    pub fn next(&'a mut self) -> Option<(&'a K, &'a V)> {
+        todo!()
+    }
+
+    pub fn prev(&'a mut self) -> Option<(&'a K, &'a V)> {
+        todo!()
+    }
+
+    pub fn item(&self) -> Option<&Item<K, V>> {
+        todo!()
+    }
+    pub fn seek(&mut self, key: &K) {
+        todo!()
     }
 }
 

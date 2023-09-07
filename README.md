@@ -7,12 +7,12 @@ A Data Structure of BTree Implemented with Rust, not use any unsafe lib.
 xxxxxxxx
 
 ## future:
-* snapshot 
-* split_off
-* put
-* delete
-* get
-* prev iter
+* snapshot ✅
+* split_off ✅
+* put ✅
+* delete ✅
+* get ✅
+* prev iter 
 * next iter
 
 
