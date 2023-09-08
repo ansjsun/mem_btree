@@ -8,7 +8,7 @@ use node::Node;
 
 type N<K, V> = Arc<BTreeType<K, V>>;
 
-type Item<K, V> = Arc<(K, V)>;
+pub type Item<K, V> = Arc<(K, V)>;
 
 #[derive(Debug)]
 pub enum BTreeType<K, V>
@@ -69,6 +69,29 @@ where
             BTreeType::Node(node) => node.len(),
         }
     }
+
+    fn is_leaf(&self) -> bool {
+        match self {
+            BTreeType::Leaf(_) => true,
+            BTreeType::Node(_) => false,
+        }
+    }
+
+    fn get_node_by_index(&self, index: usize) -> N<K, V> {
+        if let BTreeType::Node(node) = self {
+            node.children[index].clone()
+        } else {
+            panic!("not a node")
+        }
+    }
+
+    fn get_leaf_by_index(&self, index: usize) -> Item<K, V> {
+        if let BTreeType::Leaf(node) = self {
+            node.items[index].clone()
+        } else {
+            panic!("not a node")
+        }
+    }
 }
 
 pub struct Iterator<K, V>
@@ -77,8 +100,7 @@ where
     V: Debug,
 {
     inner: BTree<K, V>,
-    queue: LinkedList<(N<K, V>, usize)>,
-    direction: bool, // true front false back
+    stack: LinkedList<(N<K, V>, i32)>,
 }
 
 impl<K, V> Iterator<K, V>
@@ -87,28 +109,70 @@ where
     V: Debug,
 {
     fn new(inner: BTree<K, V>, direction: bool) -> Self {
-        let mut queue = LinkedList::new();
-        queue.push_back((inner.root.clone(), 0));
-
         Self {
             inner,
-            queue,
+            stack: LinkedList::new(),
             direction,
         }
     }
-    pub fn next(&'a mut self) -> Option<(&'a K, &'a V)> {
+    pub fn next<'a>(&'a mut self) -> Option<&Item<K, V>> {
+        let (n, index) = self.stack.back()?;
+
+        match &**n {
+            BTreeType::Leaf(l) => {
+                index += 1;
+                if index < l.len() {
+                    return Some(&l.items[index as usize]);
+                }
+                self.stack.pop_back();
+            }
+            BTreeType::Node(_) => todo!(),
+        }
+    }
+
+    pub fn prev<'a>(&'a mut self) -> Option<&Item<K, V>> {
         todo!()
     }
 
-    pub fn prev(&'a mut self) -> Option<(&'a K, &'a V)> {
-        todo!()
-    }
-
-    pub fn item(&self) -> Option<&Item<K, V>> {
-        todo!()
-    }
     pub fn seek(&mut self, key: &K) {
         todo!()
+    }
+
+    pub fn seek_first(&mut self) {
+        self.stack.clear();
+
+        let mut node = self.inner.root.clone();
+
+        loop {
+            match &*node {
+                BTreeType::Leaf(l) => {
+                    self.stack.push_back((node.clone(), -1));
+                    break;
+                }
+                BTreeType::Node(n) => {
+                    self.stack.push_back((node.clone(), 0));
+                    node = n.children[0].clone();
+                }
+            }
+        }
+    }
+
+    pub fn seek_last(&mut self) {
+        self.stack.clear();
+
+        let mut node = self.inner.root.clone();
+
+        loop {
+            self.stack.push_back((node.clone(), node.len() as i32));
+            match &*node {
+                BTreeType::Leaf(_l) => {
+                    break;
+                }
+                BTreeType::Node(n) => {
+                    node = n.children[0].clone();
+                }
+            }
+        }
     }
 }
 

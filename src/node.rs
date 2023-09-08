@@ -10,7 +10,7 @@ where
 {
     pub key: Option<Arc<K>>,
     length: usize,
-    children: Vec<N<K, V>>,
+    pub children: Vec<N<K, V>>,
 }
 
 impl<K, V> Node<K, V>

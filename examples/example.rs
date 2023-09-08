@@ -9,6 +9,8 @@ pub fn main() {
     btree_map.insert(3, 3);
     btree_map.insert(4, 4);
     btree_map.insert(5, 5);
+
+    btree_map.iter().rev()
 }
 
 pub fn split_off() {
