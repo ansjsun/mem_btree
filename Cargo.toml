@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Ansj <ansj-sun@163.com>"]
 license = "MIT OR Apache-2.0"
 categories = ["snapshot", "btree", "concurrency"]
+description = "A Data Structure of BTree Implemented with Rust, support snapshot. not use any unsafe lib."
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
