@@ -1,7 +1,6 @@
 # rust mem_btree 
 
-A Data Structure of BTree Implemented with Rust, not use any unsafe lib.
-
+A Data Structure of BTree Implemented with Rust, support snapshot. not use any unsafe lib.
 
 ## Design:
 xxxxxxxx
