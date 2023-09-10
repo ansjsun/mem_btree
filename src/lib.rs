@@ -77,24 +77,9 @@ where
         }
     }
 
-    fn is_leaf(&self) -> bool {
-        match self {
-            BTreeType::Leaf(_) => true,
-            BTreeType::Node(_) => false,
-        }
-    }
-
     fn get_node_by_index(&self, index: usize) -> N<K, V> {
         if let BTreeType::Node(node) = self {
             node.children[index].clone()
-        } else {
-            panic!("not a node")
-        }
-    }
-
-    fn get_leaf_by_index(&self, index: usize) -> Item<K, V> {
-        if let BTreeType::Leaf(node) = self {
-            node.items[index].clone()
         } else {
             panic!("not a node")
         }
@@ -280,6 +265,9 @@ where
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {
+        if self.root.len() == 0 {
+            return None;
+        }
         self.root.get(k)
     }
 
@@ -307,5 +295,273 @@ where
         (Some(_), None) => std::cmp::Ordering::Greater,
         (None, Some(_)) => std::cmp::Ordering::Less,
         (None, None) => std::cmp::Ordering::Equal,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BTree;
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn test_insert_and_compare() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..10000 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree.put(*key, *value);
+            btree_map.insert(*key, *value);
+        }
+
+        // Check if the values are the same in both data structures
+        for (key, _value) in &pairs {
+            assert_eq!(btree.get(key), btree_map.get(key));
+        }
+    }
+
+    #[test]
+    fn test_remove_and_compare() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..10000 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree.put(*key, *value);
+            btree_map.insert(*key, *value);
+        }
+
+        // Remove some key-value pairs from both data structures
+        for i in 0..5000 {
+            let (key, _) = pairs[i];
+            btree.remove(&key);
+            btree_map.remove(&key);
+        }
+
+        // Check if the values are the same in both data structures
+        for (key, _value) in &pairs {
+            assert_eq!(btree.get(key), btree_map.get(key));
+        }
+    }
+
+    #[test]
+    fn test_split_index() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..1000 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree.put(*key, *value);
+            btree_map.insert(*key, *value);
+        }
+
+        let temp = btree.clone();
+        let temp_map = btree_map.clone();
+
+        for i in 0..pairs.len() {
+            let mut btree = temp.clone();
+            let mut btree_map = temp_map.clone();
+            // Split off a part of the BTree and BTreeMap
+            let split_index = i as u64;
+            let split_btree = btree.split_off(&split_index);
+            let split_btree_map = btree_map.split_off(&split_index);
+
+            // Check if the split off part is correct
+            for (key, _value) in &pairs {
+                if *key < split_index {
+                    assert_eq!(btree.get(key), btree_map.get(key));
+                } else {
+                    assert_eq!(split_btree.get(key), split_btree_map.get(key));
+                }
+            }
+
+            // Check if the split off part is empty in the original BTree and BTreeMap
+            for (key, _value) in &pairs {
+                if *key >= split_index {
+                    assert_eq!(btree.get(key), None);
+                    assert_eq!(btree_map.get(key), None);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_iter() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..10000 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree.put(*key, *value);
+            btree_map.insert(*key, *value);
+        }
+
+        // Check if the values are the same in both data structures
+        let mut btree_iter = btree.iter();
+        let mut btree_map_iter = btree_map.iter();
+        loop {
+            match (btree_iter.next(), btree_map_iter.next()) {
+                (Some(item), Some((btree_map_key, btree_map_value))) => {
+                    assert_eq!(&item.0, btree_map_key);
+                    assert_eq!(&item.1, btree_map_value);
+                }
+                (None, None) => break,
+                _ => panic!("BTree and BTreeMap have different lengths"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_iter_prev() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..10000 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree.put(*key, *value);
+            btree_map.insert(*key, *value);
+        }
+
+        // Check if the values are the same in both data structures
+        let mut btree_iter = btree.iter();
+        let mut btree_map_iter = btree_map.iter().rev();
+        loop {
+            match (btree_iter.prev(), btree_map_iter.next()) {
+                (Some(item), Some((btree_map_key, btree_map_value))) => {
+                    assert_eq!(&item.0, btree_map_key);
+                    assert_eq!(&item.1, btree_map_value);
+                }
+                (None, None) => break,
+                _ => panic!("BTree and BTreeMap have different lengths"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_seek() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..10000 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree.put(*key, *value);
+            btree_map.insert(*key, *value);
+        }
+
+        // Check if the values are the same in both data structures
+        for i in 0..10000 {
+            let key = i as u64;
+            let mut btree_iter = btree.iter();
+            btree_iter.seek(&key);
+            let btree_map_iter = btree_map.range(key..).next();
+            match (btree_iter.next(), btree_map_iter) {
+                (Some(item), Some((btree_map_key, btree_map_value))) => {
+                    assert_eq!(&item.0, btree_map_key);
+                    assert_eq!(&item.1, btree_map_value);
+                }
+                (None, None) => {}
+                _ => panic!("BTree and BTreeMap have different lengths"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_seek_prev() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..10000 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree.put(*key, *value);
+            btree_map.insert(*key, *value);
+        }
+
+        // Check if the values are the same in both data structures
+        for i in 0..10000 {
+            let key = i as u64;
+            let mut btree_iter = btree.iter();
+            btree_iter.seek_prev(&key);
+            let btree_map_iter = btree_map.range(..=key).next_back();
+            match (btree_iter.prev(), btree_map_iter) {
+                (Some(item), Some((btree_map_key, btree_map_value))) => {
+                    assert_eq!(&item.0, btree_map_key);
+                    assert_eq!(&item.1, btree_map_value);
+                }
+                (None, None) => {}
+                _ => panic!("BTree and BTreeMap have different lengths"),
+            }
+        }
     }
 }

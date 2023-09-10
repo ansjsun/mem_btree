@@ -1,9 +1,12 @@
-use std::collections::BTreeMap;
-
 use rand::seq::SliceRandom;
 
 pub fn main() {
+    prev_seek_next();
     seek_next();
+    prev_iter();
+    next_iter();
+    split_off();
+    remove();
 }
 
 pub fn prev_seek_next() {
