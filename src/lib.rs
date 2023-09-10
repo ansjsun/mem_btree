@@ -70,6 +70,13 @@ where
         }
     }
 
+    fn children_len(&self) -> usize {
+        match self {
+            BTreeType::Leaf(leaf) => leaf.items.len(),
+            BTreeType::Node(node) => node.children.len(),
+        }
+    }
+
     fn is_leaf(&self) -> bool {
         match self {
             BTreeType::Leaf(_) => true,
@@ -108,68 +115,102 @@ where
     K: Ord + Debug + Clone,
     V: Debug,
 {
-    fn new(inner: BTree<K, V>, direction: bool) -> Self {
-        Self {
-            inner,
-            stack: LinkedList::new(),
-            direction,
-        }
+    fn new(inner: BTree<K, V>) -> Self {
+        let mut stack = LinkedList::new();
+        stack.push_back((inner.root.clone(), -1));
+        Self { inner, stack }
     }
-    pub fn next<'a>(&'a mut self) -> Option<&Item<K, V>> {
-        let (n, index) = self.stack.back()?;
-
-        match &**n {
-            BTreeType::Leaf(l) => {
-                index += 1;
-                if index < l.len() {
-                    return Some(&l.items[index as usize]);
-                }
-                self.stack.pop_back();
+    pub fn next(&mut self) -> Option<Item<K, V>> {
+        loop {
+            let (b, mut index) = self.stack.pop_back()?;
+            index += 1;
+            if index == b.children_len() as i32 {
+                continue;
             }
-            BTreeType::Node(_) => todo!(),
+            self.stack.push_back((b.clone(), index));
+
+            match &*b {
+                BTreeType::Leaf(l) => {
+                    let result = Some(l.items[index as usize].clone());
+                    return result;
+                }
+                BTreeType::Node(n) => {
+                    self.stack
+                        .push_back((n.children[index as usize].clone(), -1));
+                }
+            }
         }
     }
 
-    pub fn prev<'a>(&'a mut self) -> Option<&Item<K, V>> {
-        todo!()
+    pub fn prev(&mut self) -> Option<Item<K, V>> {
+        loop {
+            let (b, mut index) = self.stack.pop_back()?;
+            if index == -1 {
+                index = b.children_len() as i32;
+            }
+
+            index -= 1;
+            if index < 0 {
+                continue;
+            }
+            self.stack.push_back((b.clone(), index));
+
+            match &*b {
+                BTreeType::Leaf(l) => {
+                    let result = Some(l.items[index as usize].clone());
+                    return result;
+                }
+                BTreeType::Node(n) => {
+                    self.stack
+                        .push_back((n.children[index as usize].clone(), -1));
+                }
+            }
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.stack.clear();
+        self.stack.push_back((self.inner.root.clone(), -1));
     }
 
     pub fn seek(&mut self, key: &K) {
-        todo!()
-    }
-
-    pub fn seek_first(&mut self) {
         self.stack.clear();
 
         let mut node = self.inner.root.clone();
-
         loop {
             match &*node {
                 BTreeType::Leaf(l) => {
-                    self.stack.push_back((node.clone(), -1));
+                    let index = l.search_index(key).unwrap_or_else(|i| i);
+                    self.stack.push_back((node.clone(), index as i32 - 1));
                     break;
                 }
                 BTreeType::Node(n) => {
-                    self.stack.push_back((node.clone(), 0));
-                    node = n.children[0].clone();
+                    let index = n.search_index(key);
+                    self.stack.push_back((node.clone(), index as i32));
+                    node = node.get_node_by_index(index);
                 }
             }
         }
     }
 
-    pub fn seek_last(&mut self) {
+    pub fn seek_prev(&mut self, key: &K) {
         self.stack.clear();
 
         let mut node = self.inner.root.clone();
-
         loop {
-            self.stack.push_back((node.clone(), node.len() as i32));
             match &*node {
-                BTreeType::Leaf(_l) => {
+                BTreeType::Leaf(l) => {
+                    match l.search_index(key) {
+                        Ok(index) => self.stack.push_back((node.clone(), index as i32 + 1)),
+                        Err(index) => self.stack.push_back((node.clone(), index as i32)),
+                    }
+
                     break;
                 }
                 BTreeType::Node(n) => {
-                    node = n.children[0].clone();
+                    let index = n.search_index(key);
+                    self.stack.push_back((node.clone(), index as i32));
+                    node = node.get_node_by_index(index);
                 }
             }
         }
@@ -244,6 +285,16 @@ where
 
     pub fn len(&self) -> usize {
         self.length
+    }
+
+    /// make a iterator for this btree
+    /// default is seek_first
+    pub fn iter(&self) -> Iterator<K, V> {
+        Iterator::new(Self {
+            m: self.m,
+            length: self.length,
+            root: self.root.clone(),
+        })
     }
 }
 

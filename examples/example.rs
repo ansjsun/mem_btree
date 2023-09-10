@@ -3,14 +3,105 @@ use std::collections::BTreeMap;
 use rand::seq::SliceRandom;
 
 pub fn main() {
-    let mut btree_map = BTreeMap::new();
-    btree_map.insert(1, 1);
-    btree_map.insert(2, 2);
-    btree_map.insert(3, 3);
-    btree_map.insert(4, 4);
-    btree_map.insert(5, 5);
+    seek_next();
+}
 
-    btree_map.iter().rev()
+pub fn prev_seek_next() {
+    let num = 32;
+    let mut datas = (0..num).into_iter().map(|v| v * 2).collect::<Vec<_>>();
+
+    datas.shuffle(&mut rand::thread_rng());
+
+    let mut btree = mem_btree::BTree::new(4);
+
+    for i in datas.iter() {
+        btree.put(i.clone(), i.clone());
+    }
+
+    let mut iter = btree.iter();
+
+    iter.seek_prev(&10);
+
+    while let Some(item) = iter.prev() {
+        println!("k: {:?} v: {:?}", item.0, item.1);
+    }
+
+    println!("-------------------");
+
+    iter.seek_prev(&9);
+
+    while let Some(item) = iter.prev() {
+        println!("k: {:?} v: {:?}", item.0, item.1);
+    }
+}
+
+pub fn seek_next() {
+    let num = 32;
+    let mut datas = (0..num).into_iter().map(|v| v * 2).collect::<Vec<_>>();
+
+    datas.shuffle(&mut rand::thread_rng());
+
+    let mut btree = mem_btree::BTree::new(4);
+
+    for i in datas.iter() {
+        btree.put(i.clone(), i.clone());
+    }
+
+    let mut iter = btree.iter();
+
+    iter.seek(&10);
+
+    while let Some(item) = iter.next() {
+        println!("k: {:?} v: {:?}", item.0, item.1);
+    }
+
+    println!("-------------------");
+
+    iter.seek(&9);
+
+    while let Some(item) = iter.next() {
+        println!("k: {:?} v: {:?}", item.0, item.1);
+    }
+}
+
+pub fn prev_iter() {
+    let num = 1024;
+    let mut datas = (0..num).into_iter().map(|v| v).collect::<Vec<_>>();
+
+    datas.shuffle(&mut rand::thread_rng());
+
+    let mut btree = mem_btree::BTree::new(32);
+
+    for i in datas.iter() {
+        btree.put(i.clone(), i.clone());
+    }
+
+    let mut iter = btree.iter();
+
+    while let Some(item) = iter.prev() {
+        println!("k: {:?} v: {:?}", item.0, item.1);
+    }
+}
+
+pub fn next_iter() {
+    let num = 1024;
+    let mut datas = (0..num).into_iter().map(|v| v).collect::<Vec<_>>();
+
+    datas.shuffle(&mut rand::thread_rng());
+
+    let mut btree = mem_btree::BTree::new(32);
+
+    for i in datas.iter() {
+        btree.put(i.clone(), i.clone());
+    }
+
+    println!("{:#?}", btree);
+
+    let mut iter = btree.iter();
+
+    while let Some(item) = iter.next() {
+        println!("k: {:?} v: {:?}", item.0, item.1);
+    }
 }
 
 pub fn split_off() {

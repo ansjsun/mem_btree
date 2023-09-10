@@ -105,7 +105,7 @@ where
         (Self::new(left), Self::new(right))
     }
 
-    fn search_index(&self, k: &K) -> usize {
+    pub fn search_index(&self, k: &K) -> usize {
         match self.children.binary_search_by(|c| cmp(c.key(), Some(&k))) {
             Ok(i) => i,
             Err(i) => {

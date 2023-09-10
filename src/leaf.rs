@@ -66,6 +66,10 @@ where
         None
     }
 
+    pub fn search_index(&self, k: &K) -> Result<usize, usize> {
+        self.items.binary_search_by(|v| v.0.cmp(k))
+    }
+
     pub fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
         if let Ok(i) = self.items.binary_search_by(|v| v.0.cmp(k)) {
             let mut items = Vec::with_capacity(self.items.len() - 1);
