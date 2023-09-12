@@ -1,3 +1,4 @@
+mod batch_write;
 mod leaf;
 mod node;
 
@@ -9,6 +10,8 @@ use node::Node;
 type N<K, V> = Arc<BTreeType<K, V>>;
 
 pub type Item<K, V> = Arc<(K, V)>;
+
+pub type BatchWrite<K, V> = batch_write::BatchWrite<K, V>;
 
 #[derive(Debug)]
 pub enum BTreeType<K, V>
@@ -209,7 +212,6 @@ where
     V: Debug,
 {
     m: usize,
-    length: usize,
     root: N<K, V>,
 }
 
@@ -221,17 +223,12 @@ where
     pub fn new(m: usize) -> Self {
         Self {
             m,
-            length: Default::default(),
             root: Arc::new(BTreeType::Leaf(Leaf { items: Vec::new() })),
         }
     }
 
     pub fn put(&mut self, k: K, v: V) -> Option<Item<K, V>> {
         let (values, v) = self.root.put(self.m, k, v);
-
-        if v.is_none() {
-            self.length += 1;
-        }
 
         if values.len() > 1 {
             self.root = Node::new(values);
@@ -247,19 +244,15 @@ where
 
         self.root = node;
 
-        self.length -= 1;
-
         Some(item)
     }
 
     pub fn split_off(&mut self, k: &K) -> BTree<K, V> {
         let (left, right) = self.root.split_off(k);
         self.root = left;
-        self.length = self.root.len();
 
         BTree {
             m: self.m,
-            length: right.len(),
             root: right,
         }
     }
@@ -272,7 +265,7 @@ where
     }
 
     pub fn len(&self) -> usize {
-        self.length
+        self.root.len()
     }
 
     /// make a iterator for this btree
@@ -280,9 +273,12 @@ where
     pub fn iter(&self) -> Iterator<K, V> {
         Iterator::new(Self {
             m: self.m,
-            length: self.length,
             root: self.root.clone(),
         })
+    }
+
+    pub fn write(&self, batch_write: &mut BatchWrite<K, V>) -> Iterator<K, V> {
+        todo!()
     }
 }
 

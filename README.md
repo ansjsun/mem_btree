@@ -19,6 +19,7 @@ The main idea is to use Arc in a freewheeling way, and then in the process of wr
 * seek_prev ✅
 * prev iter ✅
 * next iter ✅
+* batch_write ✅
 
 
 ## bench
