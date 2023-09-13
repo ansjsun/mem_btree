@@ -1,35 +1,36 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Debug;
+use std::collections::BTreeMap;
 
-#[derive(Debug)]
+pub enum Action<V> {
+    Put(V),
+    Delete,
+}
+
 pub struct BatchWrite<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
-    inner: BTreeMap<K, V>,
-    deleted: BTreeSet<K>,
+    inner: BTreeMap<K, Action<V>>,
 }
 
 impl<K, V> BatchWrite<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
     pub fn new() -> Self {
         Self {
             inner: Default::default(),
-            deleted: Default::default(),
         }
     }
 
     pub fn put(&mut self, key: K, value: V) {
-        self.deleted.remove(&key);
-        self.inner.insert(key, value);
+        self.inner.insert(key, Action::Put(value));
     }
 
     pub fn delete(&mut self, key: K) {
-        self.inner.remove(&key);
-        self.deleted.insert(key);
+        self.inner.insert(key, Action::Delete);
+    }
+
+    pub fn to_map(self) -> BTreeMap<K, Action<V>> {
+        self.inner
     }
 }

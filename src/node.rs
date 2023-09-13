@@ -5,8 +5,7 @@ use crate::*;
 #[derive(Debug)]
 pub struct Node<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
     pub key: Option<Arc<K>>,
     length: usize,
@@ -15,13 +14,11 @@ where
 
 impl<K, V> Node<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
     pub fn new(children: Vec<N<K, V>>) -> N<K, V>
     where
-        K: Ord + Debug + Clone,
-        V: Debug,
+        K: Ord + Clone,
     {
         let key = if children.len() == 0 {
             None
@@ -79,6 +76,17 @@ where
         children.extend(self.children[index + 1..].iter().cloned());
 
         Some((Self::new(children), item))
+    }
+
+    pub fn write(&self, m: usize, actions: BTreeMap<K, Action<V>>) {
+        if let Some((k, _)) = actions.first_key_value() {
+            let index = self.search_index(k);
+            if index + 1 < self.children.len() {
+                //get next key for current childs
+                let v = self.children[index + 1].key();
+                self.children[index].write(m, actions);
+            }
+        }
     }
 
     pub fn len(&self) -> usize {

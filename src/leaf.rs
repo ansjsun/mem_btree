@@ -1,14 +1,13 @@
 use crate::*;
 
 #[derive(Debug)]
-pub struct Leaf<K: Debug, V: Debug> {
+pub struct Leaf<K, V> {
     pub items: Vec<Item<K, V>>,
 }
 
 impl<K, V> Leaf<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
     pub fn new(items: Vec<Item<K, V>>) -> N<K, V> {
         Arc::new(BTreeType::Leaf(Self { items }))
@@ -79,6 +78,8 @@ where
         }
         None
     }
+
+    pub fn write(&self, m: usize, batch_write: BTreeMap<K, Action<V>>) {}
 
     pub fn len(&self) -> usize {
         self.items.len()

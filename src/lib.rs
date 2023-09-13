@@ -2,8 +2,13 @@ mod batch_write;
 mod leaf;
 mod node;
 
-use std::{collections::LinkedList, fmt::Debug, sync::Arc};
+use std::{
+    collections::{BTreeMap, LinkedList},
+    fmt::Debug,
+    sync::Arc,
+};
 
+use batch_write::Action;
 use leaf::Leaf;
 use node::Node;
 
@@ -16,8 +21,7 @@ pub type BatchWrite<K, V> = batch_write::BatchWrite<K, V>;
 #[derive(Debug)]
 pub enum BTreeType<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
     Leaf(Leaf<K, V>),
     Node(Node<K, V>),
@@ -25,8 +29,7 @@ where
 
 impl<K, V> BTreeType<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
     fn key(&self) -> Option<&K> {
         match self {
@@ -56,6 +59,13 @@ where
         match self {
             BTreeType::Leaf(leaf) => leaf.remove(k),
             BTreeType::Node(node) => node.remove(k),
+        }
+    }
+
+    fn write(&self, m: usize, batch_write: BTreeMap<K, Action<V>>) {
+        match self {
+            BTreeType::Leaf(leaf) => leaf.write(m, batch_write),
+            BTreeType::Node(node) => node.write(m, batch_write),
         }
     }
 
@@ -208,8 +218,7 @@ where
 #[derive(Clone, Debug)]
 pub struct BTree<K, V>
 where
-    K: Ord + Debug + Clone,
-    V: Debug,
+    K: Ord + Clone,
 {
     m: usize,
     root: N<K, V>,
@@ -247,6 +256,11 @@ where
         Some(item)
     }
 
+    pub fn write(&mut self, batch_write: BatchWrite<K, V>) {
+        self.root.write(self.m, batch_write.to_map());
+        todo!()
+    }
+
     pub fn split_off(&mut self, k: &K) -> BTree<K, V> {
         let (left, right) = self.root.split_off(k);
         self.root = left;
@@ -276,15 +290,11 @@ where
             root: self.root.clone(),
         })
     }
-
-    pub fn write(&self, batch_write: &mut BatchWrite<K, V>) -> Iterator<K, V> {
-        todo!()
-    }
 }
 
 fn cmp<K>(k1: Option<&K>, k2: Option<&K>) -> std::cmp::Ordering
 where
-    K: Ord + Debug + Clone,
+    K: Ord + Clone,
 {
     match (k1, k2) {
         (Some(k1), Some(k2)) => k1.cmp(k2),
