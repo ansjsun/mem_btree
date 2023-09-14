@@ -78,15 +78,46 @@ where
         Some((Self::new(children), item))
     }
 
-    pub fn write(&self, m: usize, actions: BTreeMap<K, Action<V>>) {
-        if let Some((k, _)) = actions.first_key_value() {
-            let index = self.search_index(k);
-            if index + 1 < self.children.len() {
-                //get next key for current childs
-                let v = self.children[index + 1].key();
-                self.children[index].write(m, actions);
+    pub fn write(&self, m: usize, mut actions: BTreeMap<K, Action<V>>) -> Vec<N<K, V>> {
+        let mut children = Vec::with_capacity(self.children.len() + actions.len());
+
+        let mut start_index = 0;
+
+        loop {
+            if let Some((k, _)) = actions.first_key_value() {
+                let index = self.search_index(k);
+
+                if start_index < index {
+                    children.extend_from_slice(&self.children[start_index..index]);
+                }
+
+                if index + 1 < self.children.len() {
+                    //get next key for current childs
+                    if let Some(k) = self.children[index + 1].key() {
+                        let temp = actions.split_off(k);
+                        children.extend(self.children[index].write(m, actions));
+                        start_index = index + 1;
+                        actions = temp;
+                    }
+                } else {
+                    children.extend(self.children[index].write(m, actions));
+                    break;
+                }
+            } else {
+                break;
             }
         }
+
+        children
+            .chunks(m)
+            .filter_map(|c| {
+                if c.len() > 0 {
+                    Some(Self::new(c.to_vec()))
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     pub fn len(&self) -> usize {

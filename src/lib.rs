@@ -62,7 +62,7 @@ where
         }
     }
 
-    fn write(&self, m: usize, batch_write: BTreeMap<K, Action<V>>) {
+    fn write(&self, m: usize, batch_write: BTreeMap<K, Action<V>>) -> Vec<N<K, V>> {
         match self {
             BTreeType::Leaf(leaf) => leaf.write(m, batch_write),
             BTreeType::Node(node) => node.write(m, batch_write),
@@ -257,8 +257,29 @@ where
     }
 
     pub fn write(&mut self, batch_write: BatchWrite<K, V>) {
-        self.root.write(self.m, batch_write.to_map());
-        todo!()
+        let mut nodes = self.root.write(self.m, batch_write.to_map());
+
+        while nodes.len() > self.m {
+            nodes = nodes
+                .chunks(self.m)
+                .filter_map(|c| {
+                    if c.len() > 0 {
+                        Some(Node::new(c.to_vec()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+        }
+
+        if nodes.len() > 1 {
+            self.root = Node::new(nodes);
+        } else {
+            match nodes.into_iter().next() {
+                Some(v) => self.root = v,
+                None => self.root = Node::new(vec![]),
+            };
+        }
     }
 
     pub fn split_off(&mut self, k: &K) -> BTree<K, V> {
@@ -306,6 +327,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::BatchWrite;
+
     use super::BTree;
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
@@ -568,6 +591,40 @@ mod tests {
                 (None, None) => {}
                 _ => panic!("BTree and BTreeMap have different lengths"),
             }
+        }
+    }
+
+    #[test]
+    fn test_batch_write() {
+        // Create a new BTree and BTreeMap
+        let mut btree = BTree::new(32);
+        let mut btree_map = BTreeMap::new();
+
+        // Generate some random key-value pairs
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut pairs = Vec::new();
+        for _ in 0..10240 {
+            let key = rng.gen::<u64>();
+            let value = rng.gen::<u64>();
+            pairs.push((key, value));
+        }
+
+        pairs.chunks(256).for_each(|c| {
+            let mut bw = BatchWrite::new();
+            for v in c {
+                bw.put(v.0, v.1);
+            }
+            btree.write(bw);
+        });
+
+        // Insert the key-value pairs into both data structures
+        for (key, value) in &pairs {
+            btree_map.insert(*key, *value);
+        }
+
+        // Check if the values are the same in both data structures
+        for (key, _value) in &pairs {
+            assert_eq!(btree.get(key), btree_map.get(key));
         }
     }
 }

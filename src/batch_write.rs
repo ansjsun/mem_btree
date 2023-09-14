@@ -1,10 +1,20 @@
 use std::collections::BTreeMap;
 
+#[derive(Debug)]
 pub enum Action<V> {
     Put(V),
     Delete,
 }
+impl<V> Action<V> {
+    pub(crate) fn value(self) -> V {
+        match self {
+            Self::Put(v) => v,
+            Self::Delete => unreachable!(),
+        }
+    }
+}
 
+#[derive(Debug)]
 pub struct BatchWrite<K, V>
 where
     K: Ord + Clone,

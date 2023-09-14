@@ -79,7 +79,24 @@ where
         None
     }
 
-    pub fn write(&self, m: usize, batch_write: BTreeMap<K, Action<V>>) {}
+    pub fn write(&self, m: usize, bw: BTreeMap<K, Action<V>>) -> Vec<N<K, V>> {
+        let items = Self::merge_sort_arr(
+            self.items.len() + bw.len(),
+            self.items.iter(),
+            bw.into_iter(),
+        );
+
+        items
+            .chunks(m)
+            .filter_map(|c| {
+                if c.len() > 0 {
+                    Some(Self::new(c.to_vec()))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 
     pub fn len(&self) -> usize {
         self.items.len()
@@ -93,5 +110,64 @@ where
 
         let (left, right) = self.items.split_at(index);
         (Self::new(left.to_vec()), Self::new(right.to_vec()))
+    }
+
+    fn merge_sort_arr(
+        new_len: usize,
+        mut iter1: std::slice::Iter<'_, Arc<(K, V)>>,
+        mut iter2: std::collections::btree_map::IntoIter<K, Action<V>>,
+    ) -> Vec<Item<K, V>> {
+        let mut result = Vec::with_capacity(new_len);
+        let mut v1 = iter1.next().cloned();
+        let mut v2 = iter2.next();
+        loop {
+            match (&v1, &v2) {
+                (None, None) => break,
+                (None, Some(_)) => match v2 {
+                    Some((_, Action::Delete)) => {
+                        v2 = iter2.next();
+                    }
+                    Some((k, Action::Put(v))) => {
+                        result.push(Arc::new((k, v)));
+                        v2 = iter2.next();
+                    }
+                    None => unreachable!(),
+                },
+                (Some(i), None) => {
+                    result.push(i.clone());
+                    v1 = iter1.next().cloned();
+                }
+                (Some(i), Some((k, i2))) => match i.0.cmp(k) {
+                    std::cmp::Ordering::Less => {
+                        result.push(i.clone());
+                        v1 = iter1.next().cloned();
+                    }
+                    std::cmp::Ordering::Equal => match i2 {
+                        Action::Delete => {
+                            v1 = iter1.next().cloned();
+                            v2 = iter2.next();
+                        }
+                        Action::Put(_) => {
+                            let (k, v) = v2.unwrap();
+                            result.push(Arc::new((k, v.value())));
+                            v1 = iter1.next().cloned();
+                            v2 = iter2.next();
+                        }
+                    },
+                    std::cmp::Ordering::Greater => match i2 {
+                        Action::Delete => {
+                            v2 = iter2.next();
+                        }
+                        Action::Put(_) => {
+                            let (k, v) = v2.unwrap();
+                            result.push(Arc::new((k, v.value())));
+                            v2 = iter2.next();
+                        }
+                    },
+                },
+            }
+        }
+
+        result
     }
 }

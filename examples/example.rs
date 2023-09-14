@@ -1,16 +1,58 @@
 use std::collections::BTreeMap;
 
-use rand::seq::SliceRandom;
+use mem_btree::{BTree, BatchWrite};
+use rand::{seq::SliceRandom, Rng, SeedableRng};
 
 pub fn main() {
-    let mut bb = BTreeMap::new();
-    bb.insert(1, 2);
-    bb.insert(2, 2);
-    bb.insert(3, 2);
-    bb.insert(4, 2);
-    bb.insert(5, 2);
+    // let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+    // let mut pairs = Vec::new();
+    // for _ in 0..128 {
+    //     let key = rng.gen::<u64>();
+    //     let value = rng.gen::<u64>();
+    //     pairs.push((key, value));
+    // }
 
-    println!("{:?}", bb.split_off(&3));
+    // let mut btree = BTree::new(4);
+
+    // pairs.chunks(32).for_each(|c| {
+    //     let mut bw = BatchWrite::new();
+    //     for v in c {
+    //         bw.put(v.0, v.1);
+    //     }
+    //     btree.write(bw);
+    // });
+
+    let mut btree = BTree::new(4);
+
+    let mut vec = {
+        let mut v = vec![];
+        for i in 0..512 {
+            v.push(i * 2);
+        }
+
+        v
+    };
+
+    vec.shuffle(&mut rand::thread_rng());
+
+    vec.chunks(256).for_each(|c| {
+        let mut bw = BatchWrite::new();
+        for v in c {
+            bw.put(*v, *v);
+        }
+        println!("{:?}-----\n-------{:?}\n", btree, bw);
+        btree.write(bw);
+
+        println!("{:?}------end\n------", btree);
+    });
+
+    println!("{:?}", btree.len());
+
+    for i in vec.iter() {
+        assert!(btree.get(i).is_some());
+    }
+
+    // println!("{:?}", pairs);
 
     // prev_seek_next();
     // seek_next();
