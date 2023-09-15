@@ -1,7 +1,5 @@
-use std::collections::BTreeMap;
-
 use mem_btree::{BTree, BatchWrite};
-use rand::{seq::SliceRandom, Rng, SeedableRng};
+use rand::seq::SliceRandom;
 
 pub fn main() {
     // let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -26,7 +24,7 @@ pub fn main() {
 
     let mut vec = {
         let mut v = vec![];
-        for i in 0..512 {
+        for i in 0..32 {
             v.push(i * 2);
         }
 
@@ -35,15 +33,12 @@ pub fn main() {
 
     vec.shuffle(&mut rand::thread_rng());
 
-    vec.chunks(256).for_each(|c| {
+    vec.chunks(4).for_each(|c| {
         let mut bw = BatchWrite::new();
         for v in c {
             bw.put(*v, *v);
         }
-        println!("{:?}-----\n-------{:?}\n", btree, bw);
         btree.write(bw);
-
-        println!("{:?}------end\n------", btree);
     });
 
     println!("{:?}", btree.len());

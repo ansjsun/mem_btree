@@ -104,6 +104,7 @@ where
                     break;
                 }
             } else {
+                children.extend_from_slice(&self.children[start_index..]);
                 break;
             }
         }
