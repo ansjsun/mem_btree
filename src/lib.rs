@@ -31,10 +31,19 @@ impl<K, V> BTreeType<K, V>
 where
     K: Ord + Clone,
 {
+    /// return min key for this node
     fn key(&self) -> Option<&Item<K, V>> {
         match self {
             BTreeType::Leaf(l) => Some(&l.items[0]),
             BTreeType::Node(n) => n.key.as_ref(),
+        }
+    }
+
+    /// return max key for this node
+    fn max(&self) -> Option<&Item<K, V>> {
+        match self {
+            BTreeType::Leaf(l) => l.items.last(),
+            BTreeType::Node(n) => n.children.last()?.max(),
         }
     }
 
@@ -115,6 +124,7 @@ where
         stack.push_back((inner.root.clone(), -1));
         Self { inner, stack }
     }
+
     pub fn next(&mut self) -> Option<Item<K, V>> {
         loop {
             let (b, mut index) = self.stack.pop_back()?;
@@ -307,6 +317,16 @@ where
             m: self.m,
             root: self.root.clone(),
         })
+    }
+
+    /// Get the minimum key in the B-tree
+    pub fn min(&mut self) -> Option<&Item<K, V>> {
+        self.root.key()
+    }
+
+    /// Get the maximum key in the B-tree
+    pub fn max(&mut self) -> Option<&Item<K, V>> {
+        self.root.max()
     }
 }
 
@@ -623,5 +643,18 @@ mod tests {
         for (key, _value) in &pairs {
             assert_eq!(btree.get(key), btree_map.get(key));
         }
+    }
+
+    #[test]
+    fn test_max() {
+        let mut btree = BTree::new(4);
+        btree.put(1, "a");
+        btree.put(2, "b");
+        btree.put(3, "c");
+        btree.put(4, "d");
+        btree.put(5, "e");
+        assert_eq!(btree.max(), Some(&std::sync::Arc::new((5, "e"))));
+
+        assert_eq!(btree.min(), Some(&std::sync::Arc::new((1, "a"))));
     }
 }
