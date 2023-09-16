@@ -15,16 +15,13 @@ impl<V> Action<V> {
 }
 
 #[derive(Debug)]
-pub struct BatchWrite<K, V>
-where
-    K: Ord + Clone,
-{
+pub struct BatchWrite<K, V> {
     inner: BTreeMap<K, Action<V>>,
 }
 
 impl<K, V> BatchWrite<K, V>
 where
-    K: Ord + Clone,
+    K: Ord,
 {
     pub fn new() -> Self {
         Self {

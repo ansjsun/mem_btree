@@ -19,17 +19,14 @@ pub type Item<K, V> = Arc<(K, V)>;
 pub type BatchWrite<K, V> = batch_write::BatchWrite<K, V>;
 
 #[derive(Debug)]
-pub enum BTreeType<K, V>
-where
-    K: Ord + Clone,
-{
+pub enum BTreeType<K, V> {
     Leaf(Leaf<K, V>),
     Node(Node<K, V>),
 }
 
 impl<K, V> BTreeType<K, V>
 where
-    K: Ord + Clone,
+    K: Ord,
 {
     /// return min key for this node
     fn key(&self) -> Option<&Item<K, V>> {
@@ -107,7 +104,7 @@ where
 
 pub struct Iterator<K, V>
 where
-    K: Ord + Debug + Clone,
+    K: Ord + Debug,
     V: Debug,
 {
     inner: BTree<K, V>,
@@ -116,7 +113,7 @@ where
 
 impl<K, V> Iterator<K, V>
 where
-    K: Ord + Debug + Clone,
+    K: Ord + Debug,
     V: Debug,
 {
     fn new(inner: BTree<K, V>) -> Self {
@@ -223,19 +220,19 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct BTree<K, V>
-where
-    K: Ord + Clone,
-{
+pub struct BTree<K, V> {
     m: usize,
     root: N<K, V>,
 }
 
 impl<K, V> BTree<K, V>
 where
-    K: Ord + Debug + Clone,
+    K: Ord + Debug,
     V: Debug,
 {
+    /// Create a new BTree with a given branching factor
+    /// The branching factor is the maximum number of children a node can have
+    /// The branching factor must be at least 2
     pub fn new(m: usize) -> Self {
         Self {
             m,
@@ -332,7 +329,7 @@ where
 
 fn cmp<K, V>(k1: Option<&Item<K, V>>, k2: Option<&K>) -> std::cmp::Ordering
 where
-    K: Ord + Clone,
+    K: Ord,
 {
     match (k1, k2) {
         (Some(k1), Some(k2)) => k1.0.cmp(k2),

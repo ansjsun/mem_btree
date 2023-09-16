@@ -3,10 +3,7 @@ use std::sync::Arc;
 use crate::*;
 
 #[derive(Debug)]
-pub struct Node<K, V>
-where
-    K: Ord + Clone,
-{
+pub struct Node<K, V> {
     pub key: Option<Item<K, V>>,
     length: usize,
     pub children: Vec<N<K, V>>,
@@ -14,12 +11,9 @@ where
 
 impl<K, V> Node<K, V>
 where
-    K: Ord + Clone,
+    K: Ord,
 {
-    pub fn new(children: Vec<N<K, V>>) -> N<K, V>
-    where
-        K: Ord + Clone,
-    {
+    pub fn new(children: Vec<N<K, V>>) -> N<K, V> {
         let key = if children.len() == 0 {
             None
         } else {
@@ -33,10 +27,7 @@ where
         }))
     }
 
-    pub fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>)
-    where
-        K: Ord,
-    {
+    pub fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>) {
         let index = self.search_index(&k);
 
         let (values, old) = self.children[index].put(m, k, v);

@@ -7,16 +7,13 @@ pub struct Leaf<K, V> {
 
 impl<K, V> Leaf<K, V>
 where
-    K: Ord + Clone,
+    K: Ord,
 {
     pub fn new(items: Vec<Item<K, V>>) -> N<K, V> {
         Arc::new(BTreeType::Leaf(Self { items }))
     }
 
-    fn sort_insert(items: &mut Vec<Item<K, V>>, mut item: Item<K, V>) -> Option<Item<K, V>>
-    where
-        K: Ord,
-    {
+    fn sort_insert(items: &mut Vec<Item<K, V>>, mut item: Item<K, V>) -> Option<Item<K, V>> {
         match items.binary_search_by(|i| i.0.cmp(&item.0)) {
             Ok(i) => {
                 std::mem::swap(&mut items[i], &mut item);
@@ -29,10 +26,7 @@ where
         }
     }
 
-    pub fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>)
-    where
-        K: Ord,
-    {
+    pub fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>) {
         let mut item = Arc::new((k, v));
 
         if self.items.len() < m {
