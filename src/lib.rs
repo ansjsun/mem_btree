@@ -31,13 +31,10 @@ impl<K, V> BTreeType<K, V>
 where
     K: Ord + Clone,
 {
-    fn key(&self) -> Option<&K> {
+    fn key(&self) -> Option<&Item<K, V>> {
         match self {
-            BTreeType::Leaf(l) => Some(&l.items[0].0),
-            BTreeType::Node(n) => match n.key.as_ref() {
-                Some(k) => Some(&*k),
-                None => None,
-            },
+            BTreeType::Leaf(l) => Some(&l.items[0]),
+            BTreeType::Node(n) => n.key.as_ref(),
         }
     }
 
@@ -313,12 +310,12 @@ where
     }
 }
 
-fn cmp<K>(k1: Option<&K>, k2: Option<&K>) -> std::cmp::Ordering
+fn cmp<K, V>(k1: Option<&Item<K, V>>, k2: Option<&K>) -> std::cmp::Ordering
 where
     K: Ord + Clone,
 {
     match (k1, k2) {
-        (Some(k1), Some(k2)) => k1.cmp(k2),
+        (Some(k1), Some(k2)) => k1.0.cmp(k2),
         (Some(_), None) => std::cmp::Ordering::Greater,
         (None, Some(_)) => std::cmp::Ordering::Less,
         (None, None) => std::cmp::Ordering::Equal,

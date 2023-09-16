@@ -7,7 +7,7 @@ pub struct Node<K, V>
 where
     K: Ord + Clone,
 {
-    pub key: Option<Arc<K>>,
+    pub key: Option<Item<K, V>>,
     length: usize,
     pub children: Vec<N<K, V>>,
 }
@@ -23,7 +23,7 @@ where
         let key = if children.len() == 0 {
             None
         } else {
-            children[0].key().cloned().map(|v| Arc::new(v))
+            children[0].key().cloned()
         };
         let length = children.iter().map(|v| v.len()).sum();
         Arc::new(BTreeType::Node(Self {
@@ -94,7 +94,7 @@ where
                 if index + 1 < self.children.len() {
                     //get next key for current childs
                     if let Some(k) = self.children[index + 1].key() {
-                        let temp = actions.split_off(k);
+                        let temp = actions.split_off(&k.0);
                         children.extend(self.children[index].write(m, actions));
                         start_index = index + 1;
                         actions = temp;
