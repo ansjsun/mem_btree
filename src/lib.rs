@@ -233,6 +233,21 @@ where
     /// Create a new BTree with a given branching factor
     /// The branching factor is the maximum number of children a node can have
     /// The branching factor must be at least 2
+    /// # Examples
+    /// ```rust
+    /// let mut btree = mem_btree::BTree::new(4);
+    /// for i in datas.iter() {
+    ///    btree.put(i.clone(), i.clone());
+    /// }
+    /// println!("{:?}", btree.len());
+    /// for i in datas.iter() {
+    ///   btree.remove(i);
+    /// }
+    /// println!("{:?}", btree.len());
+    /// ```
+    ///
+
+    // println!("{:?}", btree);
     pub fn new(m: usize) -> Self {
         Self {
             m,
@@ -240,6 +255,9 @@ where
         }
     }
 
+    /// Insert a key-value pair into the B-tree
+    /// If the key already exists, the old value is returned
+    /// If the key does not exist, None is returned
     pub fn put(&mut self, k: K, v: V) -> Option<Item<K, V>> {
         let (values, v) = self.root.put(self.m, k, v);
 
@@ -252,6 +270,9 @@ where
         v
     }
 
+    /// Remove a key-value pair from the B-tree
+    /// If the key exists, the old value is returned
+    /// If the key does not exist, None is returned
     pub fn remove(&mut self, k: &K) -> Option<Item<K, V>> {
         let (node, item) = self.root.remove(k)?;
 
@@ -260,6 +281,20 @@ where
         Some(item)
     }
 
+    /// Write a batch of key-value pairs into the B-tree
+    ///
+    /// # Examples
+    /// ```
+    /// use mem_btree::BTree;
+    /// use mem_btree::BatchWrite;
+    /// let mut btree = BTree::new(32);
+    /// let mut bw = BatchWrite::new();
+    /// bw.put(1, 1);
+    /// bw.put(2, 2);
+    /// bw.put(3, 3);
+    /// btree.write(bw);
+    /// ```
+    ///
     pub fn write(&mut self, batch_write: BatchWrite<K, V>) {
         let mut nodes = self.root.write(self.m, batch_write.to_map());
 
