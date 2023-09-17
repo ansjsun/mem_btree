@@ -1,3 +1,36 @@
+//! # A Data Structure of BTree Implemented with Rust, support snapshot. not use any unsafe lib.
+//!
+//! ## Features
+//!
+//! * snapshot ✅
+//! * split_off ✅
+//! * put ✅
+//! * delete ✅
+//! * get ✅
+//! * seek ✅
+//! * seek_prev ✅
+//! * prev iter ✅
+//! * next iter ✅
+//! * batch_write ✅
+//! Licensed under either of
+//!
+//! * Apache License, Version 2.0,
+//! (./LICENSE-APACHE or <http://www.apache.org/licenses/LICENSE-2.0>)
+//! * MIT license (./LICENSE-MIT or <http://opensource.org/licenses/MIT>)
+//! at your option.
+//!
+//! ## Examples
+//!
+//! All examples are in the [sub-repository](https://github.com/async-graphql/examples), located in the examples directory.
+//!
+//! **Run an example:**
+//!
+//! ```shell script
+//! cd test
+//! cargo run --package mem_btree --example example
+//! ```
+//!
+
 mod batch_write;
 mod leaf;
 mod node;
@@ -122,6 +155,19 @@ where
         Self { inner, stack }
     }
 
+    /// # Example
+    /// ```rust
+    /// use mem_btree::BTree;
+    /// let mut btree = BTree::new(32);
+    /// let datas = vec![1,2,3,4,5];
+    /// for i in datas.iter() {
+    ///   btree.put(i.clone(), i.clone());
+    /// }
+    /// let mut iter = btree.iter();
+    /// while let Some(item) = iter.next() {
+    ///  println!("{:?}", item);
+    /// }
+    /// ```
     pub fn next(&mut self) -> Option<Item<K, V>> {
         loop {
             let (b, mut index) = self.stack.pop_back()?;
@@ -144,6 +190,18 @@ where
         }
     }
 
+    /// # Example
+    /// ```rust
+    /// use mem_btree::BTree;
+    /// let mut btree = BTree::new(32);
+    /// let datas = vec![1,2,3,4,5];
+    /// for i in datas.iter() {
+    ///  btree.put(i.clone(), i.clone());
+    /// }
+    /// let mut iter = btree.iter();
+    /// while let Some(item) = iter.prev() {
+    /// println!("{:?}", item);
+    /// }    
     pub fn prev(&mut self) -> Option<Item<K, V>> {
         loop {
             let (b, mut index) = self.stack.pop_back()?;
@@ -170,11 +228,29 @@ where
         }
     }
 
+    /// clear stack and push root node
+    /// it same as new Iterator
     pub fn reset(&mut self) {
         self.stack.clear();
         self.stack.push_back((self.inner.root.clone(), -1));
     }
 
+    /// seek by the key key
+    /// # Example
+    /// ```rust
+    /// use mem_btree::BTree;
+    /// let mut btree = BTree::new(32);
+    /// let datas = vec![1,2,3,4,5];
+    /// for i in datas.iter() {
+    ///     btree.put(i.clone(), i.clone());
+    /// }
+    /// let mut iter = btree.iter();
+    /// iter.seek(&3);
+    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((3, 3))));
+    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((4, 4))));
+    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((5, 5))));
+    ///
+    /// ```
     pub fn seek(&mut self, key: &K) {
         self.stack.clear();
 
@@ -194,7 +270,22 @@ where
             }
         }
     }
-
+    /// seek prev by the key
+    /// # Example
+    /// ```rust
+    /// use mem_btree::BTree;
+    /// let mut btree = BTree::new(32);
+    /// let datas = vec![1,2,3,4,5];
+    /// for i in datas.iter() {
+    ///     btree.put(i.clone(), i.clone());
+    /// }
+    /// let mut iter = btree.iter();
+    /// iter.seek_prev(&3);
+    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((3, 3))));
+    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((2, 2))));
+    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((1, 1))));
+    ///
+    /// ```
     pub fn seek_prev(&mut self, key: &K) {
         self.stack.clear();
 
@@ -236,6 +327,7 @@ where
     /// # Examples
     /// ```rust
     /// let mut btree = mem_btree::BTree::new(4);
+    /// let datas = vec![1,2,3,4,5] ;
     /// for i in datas.iter() {
     ///    btree.put(i.clone(), i.clone());
     /// }
@@ -321,6 +413,23 @@ where
         }
     }
 
+    /// Split off a part of the B-tree
+    /// The key k is the minimum key in the new B-tree
+    /// The new B-tree contains all keys greater than or equal to k
+    /// The old B-tree contains all keys less than k
+    /// # Examples
+    /// ```rust
+    /// use mem_btree::BTree;
+    /// let mut btree = BTree::new(32);
+    /// let datas = vec![1,2,3,4,5];
+    /// for i in datas.iter() {
+    ///  btree.put(i.clone(), i.clone());
+    /// }
+    /// let right = btree.split_off(&3);
+    /// assert_eq!(btree.len(), 2); // 1,2
+    /// assert_eq!(right.len(), 3); // 3,4,5
+    /// ```
+    ///
     pub fn split_off(&mut self, k: &K) -> BTree<K, V> {
         let (left, right) = self.root.split_off(k);
         self.root = left;
@@ -331,6 +440,20 @@ where
         }
     }
 
+    /// Get the value for a given key
+    /// If the key exists, the value is returned
+    /// If the key does not exist, None is returned
+    /// # Examples
+    /// ```rust
+    /// use mem_btree::BTree;
+    /// let mut btree = BTree::new(32);
+    /// let datas = vec![1,2,3,4,5];
+    /// for i in datas.iter() {
+    /// btree.put(i.clone(), i.clone());
+    /// }
+    /// assert_eq!(btree.get(&1), Some(&1));
+    /// assert_eq!(btree.get(&6), None);
+    /// ```
     pub fn get(&self, k: &K) -> Option<&V> {
         if self.root.len() == 0 {
             return None;
@@ -338,6 +461,17 @@ where
         self.root.get(k)
     }
 
+    /// Get the number of key-value pairs in the B-tree
+    /// # Examples
+    /// ```rust
+    /// use mem_btree::BTree;
+    /// let mut btree = BTree::new(32);
+    /// let datas = vec![1,2,3,4,5];
+    /// for i in datas.iter() {
+    /// btree.put(i.clone(), i.clone());
+    /// }
+    /// assert_eq!(btree.len(), 5);
+    /// ```
     pub fn len(&self) -> usize {
         self.root.len()
     }
