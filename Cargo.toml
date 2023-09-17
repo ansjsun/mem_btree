@@ -1,6 +1,6 @@
 [package]
 name = "mem_btree"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["Ansj <ansj-sun@163.com>"]
 license = "MIT OR Apache-2.0"
@@ -15,7 +15,6 @@ description = "A Data Structure of BTree Implemented with Rust, support snapshot
 
 
 [dev-dependencies]
-memory-stats = "1.0.0"
 rand = "0.8.5"
 
 
