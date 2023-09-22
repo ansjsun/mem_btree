@@ -13,8 +13,8 @@ impl<K, V> Node<K, V>
 where
     K: Ord,
 {
-    pub fn new(children: Vec<N<K, V>>) -> N<K, V> {
-        let key = if children.len() == 0 {
+    pub fn instance(children: Vec<N<K, V>>) -> N<K, V> {
+        let key = if children.is_empty() {
             None
         } else {
             children[0].key().cloned()
@@ -27,7 +27,7 @@ where
         }))
     }
 
-    pub fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>) {
+    pub fn put(&self, m: usize, k: K, v: V) -> PutResult<K, V> {
         let index = self.search_index(&k);
 
         let (values, old) = self.children[index].put(m, k, v);
@@ -39,7 +39,7 @@ where
         children.extend(self.children[index + 1..].iter().cloned());
 
         if children.len() < m {
-            return (vec![Self::new(children)], old);
+            return (vec![Self::instance(children)], old);
         }
 
         let mid = m / 2;
@@ -47,7 +47,7 @@ where
         let left = children[..mid].to_vec();
         let right = children[mid..].to_vec();
 
-        return (vec![Self::new(left), Self::new(right)], old);
+        (vec![Self::instance(left), Self::instance(right)], old)
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {
@@ -55,7 +55,7 @@ where
     }
 
     pub fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
-        let index = self.search_index(&k);
+        let index = self.search_index(k);
 
         let (child, item) = self.children[index].remove(k)?;
 
@@ -66,7 +66,7 @@ where
         }
         children.extend(self.children[index + 1..].iter().cloned());
 
-        Some((Self::new(children), item))
+        Some((Self::instance(children), item))
     }
 
     pub fn write(&self, m: usize, mut actions: BTreeMap<K, Action<V>>) -> Vec<N<K, V>> {
@@ -103,10 +103,10 @@ where
         children
             .chunks(m)
             .filter_map(|c| {
-                if c.len() > 0 {
-                    Some(Self::new(c.to_vec()))
-                } else {
+                if c.is_empty() {
                     None
+                } else {
+                    Some(Self::instance(c.to_vec()))
                 }
             })
             .collect()
@@ -133,11 +133,11 @@ where
         }
         right.extend_from_slice(&self.children[index + 1..]);
 
-        (Self::new(left), Self::new(right))
+        (Self::instance(left), Self::instance(right))
     }
 
     pub fn search_index(&self, k: &K) -> usize {
-        match self.children.binary_search_by(|c| cmp(c.key(), Some(&k))) {
+        match self.children.binary_search_by(|c| cmp(c.key(), Some(k))) {
             Ok(i) => i,
             Err(i) => {
                 if i == 0 {

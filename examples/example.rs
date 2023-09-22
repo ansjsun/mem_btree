@@ -34,7 +34,7 @@ pub fn main() {
     vec.shuffle(&mut rand::thread_rng());
 
     vec.chunks(4).for_each(|c| {
-        let mut bw = BatchWrite::new();
+        let mut bw = BatchWrite::default();
         for v in c {
             bw.put(*v, *v);
         }

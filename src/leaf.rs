@@ -9,7 +9,7 @@ impl<K, V> Leaf<K, V>
 where
     K: Ord,
 {
-    pub fn new(items: Vec<Item<K, V>>) -> N<K, V> {
+    pub fn instance(items: Vec<Item<K, V>>) -> N<K, V> {
         Arc::new(BTreeType::Leaf(Self { items }))
     }
 
@@ -26,13 +26,13 @@ where
         }
     }
 
-    pub fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>) {
+    pub fn put(&self, m: usize, k: K, v: V) -> PutResult<K, V> {
         let mut item = Arc::new((k, v));
 
         if self.items.len() < m {
             let mut items: Vec<Arc<(K, V)>> = self.items.clone();
             let old = Self::sort_insert(&mut items, item);
-            return (vec![Self::new(items)], old);
+            return (vec![Self::instance(items)], old);
         }
 
         let mid = m / 2;
@@ -49,7 +49,7 @@ where
             std::cmp::Ordering::Greater => Self::sort_insert(&mut right, item),
         };
 
-        return (vec![Self::new(left), Self::new(right)], old);
+        (vec![Self::instance(left), Self::instance(right)], old)
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {
@@ -68,7 +68,7 @@ where
             let mut items = Vec::with_capacity(self.items.len() - 1);
             items.extend_from_slice(&self.items[..i]);
             items.extend_from_slice(&self.items[i + 1..]);
-            return Some((Self::new(items), self.items[i].clone()));
+            return Some((Self::instance(items), self.items[i].clone()));
         }
         None
     }
@@ -83,10 +83,10 @@ where
         items
             .chunks(m)
             .filter_map(|c| {
-                if c.len() > 0 {
-                    Some(Self::new(c.to_vec()))
-                } else {
+                if c.is_empty() {
                     None
+                } else {
+                    Some(Self::instance(c.to_vec()))
                 }
             })
             .collect()
@@ -103,7 +103,10 @@ where
             .unwrap_or_else(|i| i);
 
         let (left, right) = self.items.split_at(index);
-        (Self::new(left.to_vec()), Self::new(right.to_vec()))
+        (
+            Self::instance(left.to_vec()),
+            Self::instance(right.to_vec()),
+        )
     }
 
     fn merge_sort_arr(

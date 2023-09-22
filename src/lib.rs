@@ -51,6 +51,8 @@ pub type Item<K, V> = Arc<(K, V)>;
 
 pub type BatchWrite<K, V> = batch_write::BatchWrite<K, V>;
 
+pub type PutResult<K, V> = (Vec<N<K, V>>, Option<Item<K, V>>);
+
 #[derive(Debug)]
 pub enum BTreeType<K, V> {
     Leaf(Leaf<K, V>),
@@ -77,7 +79,7 @@ where
         }
     }
 
-    fn put(&self, m: usize, k: K, v: V) -> (Vec<N<K, V>>, Option<Item<K, V>>) {
+    fn put(&self, m: usize, k: K, v: V) -> PutResult<K, V> {
         match self {
             BTreeType::Leaf(leaf) => leaf.put(m, k, v),
             BTreeType::Node(node) => node.put(m, k, v),
@@ -117,6 +119,10 @@ where
             BTreeType::Leaf(leaf) => leaf.len(),
             BTreeType::Node(node) => node.len(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     fn children_len(&self) -> usize {
@@ -168,6 +174,7 @@ where
     ///  println!("{:?}", item);
     /// }
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<Item<K, V>> {
         loop {
             let (b, mut index) = self.stack.pop_back()?;
@@ -354,7 +361,7 @@ where
         let (values, v) = self.root.put(self.m, k, v);
 
         if values.len() > 1 {
-            self.root = Node::new(values);
+            self.root = Node::instance(values);
         } else {
             self.root = values[0].clone();
         }
@@ -388,27 +395,27 @@ where
     /// ```
     ///
     pub fn write(&mut self, batch_write: BatchWrite<K, V>) {
-        let mut nodes = self.root.write(self.m, batch_write.to_map());
+        let mut nodes = self.root.write(self.m, batch_write.into_map());
 
         while nodes.len() > self.m {
             nodes = nodes
                 .chunks(self.m)
                 .filter_map(|c| {
-                    if c.len() > 0 {
-                        Some(Node::new(c.to_vec()))
-                    } else {
+                    if c.is_empty() {
                         None
+                    } else {
+                        Some(Node::instance(c.to_vec()))
                     }
                 })
                 .collect();
         }
 
         if nodes.len() > 1 {
-            self.root = Node::new(nodes);
+            self.root = Node::instance(nodes);
         } else {
             match nodes.into_iter().next() {
                 Some(v) => self.root = v,
-                None => self.root = Node::new(vec![]),
+                None => self.root = Node::instance(vec![]),
             };
         }
     }
@@ -474,6 +481,10 @@ where
     /// ```
     pub fn len(&self) -> usize {
         self.root.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.root.is_empty()
     }
 
     /// make a iterator for this btree
@@ -793,7 +804,7 @@ mod tests {
         }
 
         pairs.chunks(256).for_each(|c| {
-            let mut bw = BatchWrite::new();
+            let mut bw = BatchWrite::default();
             for v in c {
                 bw.put(v.0, v.1);
             }
