@@ -34,7 +34,7 @@
 mod batch_write;
 mod leaf;
 mod node;
-mod ttl;
+pub mod ttl;
 
 use std::{
     collections::{BTreeMap, LinkedList},
@@ -45,7 +45,6 @@ use std::{
 use batch_write::Action;
 use leaf::Leaf;
 use node::Node;
-use ttl::TTL;
 
 type N<K, V> = Arc<BTreeType<K, V>>;
 
@@ -319,87 +318,10 @@ where
     }
 }
 
-pub struct BTreeBuilder {
-    initial_capacity: usize,
-    time_to_live: i64,
-    time_to_idle: i64,
-    max_capacity: usize,
-}
-
-impl BTreeBuilder {
-    pub fn new() -> Self {
-        Self {
-            initial_capacity: 32,
-            time_to_live: 0,
-            time_to_idle: 0,
-            max_capacity: 0,
-        }
-    }
-
-    pub fn time_to_live(self, time_to_live: i64) -> Self {
-        Self {
-            time_to_live,
-            ..self
-        }
-    }
-
-    pub fn time_to_idle(self, time_to_idle: i64) -> Self {
-        Self {
-            time_to_idle,
-            ..self
-        }
-    }
-
-    pub fn initial_capacity(self, initial_capacity: usize) -> Self {
-        Self {
-            initial_capacity,
-            ..self
-        }
-    }
-
-    pub fn max_capacity(self, max_capacity: usize) -> Self {
-        Self {
-            max_capacity,
-            ..self
-        }
-    }
-
-    pub fn build<K, V>(&self) -> BTree<K, V>
-    where
-        K: Ord + Debug,
-        V: Debug,
-    {
-        let expir = if self.time_to_live > 0 || self.time_to_idle > 0 || self.max_capacity > 0 {
-            Some(Arc::new(ExpirationPolicy {
-                time_to_live: self.time_to_live,
-                time_to_idle: self.time_to_idle,
-                max_capacity: self.max_capacity,
-            }))
-        } else {
-            None
-        };
-        BTree {
-            m: self.initial_capacity,
-            root: Arc::new(BTreeType::Leaf(Leaf {
-                items: Vec::with_capacity(self.initial_capacity),
-            })),
-            expir,
-        }
-    }
-}
-
-#[derive(Debug)]
-struct ExpirationPolicy {
-    time_to_live: i64,
-    time_to_idle: i64,
-    max_capacity: usize,
-}
-
 #[derive(Clone, Debug)]
 pub struct BTree<K, V> {
     m: usize,
     root: N<K, V>,
-    expir: Option<Arc<ExpirationPolicy>>,
 }
 
 impl<K, V> BTree<K, V>
@@ -432,7 +354,6 @@ where
             root: Arc::new(BTreeType::Leaf(Leaf {
                 items: Vec::with_capacity(m),
             })),
-            expir: None,
         }
     }
 
@@ -526,7 +447,6 @@ where
         BTree {
             m: self.m,
             root: right,
-            expir: self.expir.clone(),
         }
     }
 
@@ -576,7 +496,6 @@ where
         Iterator::new(Self {
             m: self.m,
             root: self.root.clone(),
-            expir: self.expir.clone(),
         })
     }
 
