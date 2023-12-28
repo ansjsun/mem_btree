@@ -375,7 +375,11 @@ where
     pub fn remove(&mut self, k: &K) -> Option<Item<K, V>> {
         let (node, item) = self.root.remove(k)?;
 
-        self.root = node;
+        if node.is_empty() {
+            self.root = Leaf::instance(Vec::with_capacity(self.m));
+        } else {
+            self.root = node;
+        }
 
         Some(item)
     }
@@ -387,7 +391,7 @@ where
     /// use mem_btree::BTree;
     /// use mem_btree::BatchWrite;
     /// let mut btree = BTree::new(32);
-    /// let mut bw = BatchWrite::new();
+    /// let mut bw = BatchWrite::default();
     /// bw.put(1, 1);
     /// bw.put(2, 2);
     /// bw.put(3, 3);
@@ -415,7 +419,7 @@ where
         } else {
             match nodes.into_iter().next() {
                 Some(v) => self.root = v,
-                None => self.root = Node::instance(vec![]),
+                None => self.root = Leaf::instance(Vec::with_capacity(self.m)),
             };
         }
     }
@@ -833,5 +837,83 @@ mod tests {
         assert_eq!(btree.max(), Some(&std::sync::Arc::new((5, "e"))));
 
         assert_eq!(btree.min(), Some(&std::sync::Arc::new((1, "a"))));
+    }
+
+    #[test]
+    fn test_data_delete_empty() {
+        fn bw_insert(n: i32) -> BatchWrite<i32, i32> {
+            let mut bw = BatchWrite::default();
+            for i in 0..n {
+                bw.put(i, i);
+            }
+            bw
+        }
+
+        fn bw_delete(n: i32) -> BatchWrite<i32, i32> {
+            let mut bw = BatchWrite::default();
+            for i in 0..n {
+                bw.delete(i);
+            }
+            bw
+        }
+
+        let mut btree = BTree::new(32);
+
+        let n = 1;
+
+        btree.write(bw_insert(n));
+
+        assert_eq!(1, btree.len());
+
+        btree.write(bw_delete(n));
+        assert_eq!(0, btree.len());
+
+        btree.write(bw_insert(n));
+        assert_eq!(1, btree.len());
+
+        btree.put(1, 1);
+        assert_eq!(2, btree.len());
+    }
+
+    #[test]
+    fn test_rand_data() {
+        let mut btree = BTree::new(8);
+        let mut btree_batch = BTree::new(8);
+        let mut tree = BTreeMap::new();
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..100000 {
+            let s1 = rng.gen_range(0..100);
+            let s2 = rng.gen_range(0..100);
+
+            if s1 < s2 {
+                let mut bw = BatchWrite::default();
+                for i in s1..s2 {
+                    tree.insert(i, i);
+                    btree.put(i, i);
+                    bw.put(i, i);
+                }
+                btree_batch.write(bw);
+            } else {
+                let mut bw = BatchWrite::default();
+                for i in s2..s1 {
+                    tree.remove(&i);
+                    btree.remove(&i);
+                    bw.delete(i);
+                }
+                btree_batch.write(bw);
+            }
+        }
+
+        println!(
+            "insert: {}/{}/{}",
+            tree.len(),
+            btree.len(),
+            btree_batch.len()
+        );
+
+        assert_eq!(tree.len(), btree.len());
+        assert_eq!(tree.len(), btree_batch.len());
     }
 }
