@@ -39,6 +39,7 @@ use std::{
     collections::{BTreeMap, LinkedList},
     fmt::Debug,
     sync::Arc,
+    time::Duration,
 };
 
 use batch_write::Action;
@@ -47,7 +48,7 @@ use node::Node;
 
 type N<K, V> = Arc<BTreeType<K, V>>;
 
-pub type Item<K, V> = Arc<(K, V)>;
+pub type Item<K, V> = Arc<(K, V, Option<Duration>)>;
 
 pub type BatchWrite<K, V> = batch_write::BatchWrite<K, V>;
 
@@ -79,10 +80,10 @@ where
         }
     }
 
-    fn put(&self, m: usize, k: K, v: V) -> PutResult<K, V> {
+    fn put(&self, m: usize, k: K, v: V, ttl: Option<Duration>) -> PutResult<K, V> {
         match self {
-            BTreeType::Leaf(leaf) => leaf.put(m, k, v),
-            BTreeType::Node(node) => node.put(m, k, v),
+            BTreeType::Leaf(leaf) => leaf.put(m, k, v, ttl),
+            BTreeType::Node(node) => node.put(m, k, v, ttl),
         }
     }
 
@@ -138,6 +139,30 @@ where
         } else {
             panic!("not a node")
         }
+    }
+
+    fn ttl(&self) -> Option<&Duration> {
+        match self {
+            BTreeType::Leaf(leaf) => leaf.items.iter().filter_map(|i| i.2.as_ref()).min(),
+            BTreeType::Node(node) => node.children.iter().filter_map(|n| n.ttl()).min(),
+        }
+    }
+
+    fn expir(self: &Arc<Self>) -> N<K, V> {
+        match &**self {
+            BTreeType::Leaf(leaf) => {
+                if let Some(v) = leaf.expir() {
+                    return v;
+                }
+            }
+            BTreeType::Node(node) => {
+                if let Some(v) = node.expir() {
+                    return v;
+                }
+            }
+        }
+
+        self.clone()
     }
 }
 
@@ -253,9 +278,9 @@ where
     /// }
     /// let mut iter = btree.iter();
     /// iter.seek(&3);
-    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((3, 3))));
-    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((4, 4))));
-    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((5, 5))));
+    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((3, 3, None))));
+    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((4, 4, None))));
+    /// assert_eq!(iter.next(), Some(std::sync::Arc::new((5, 5, None))));
     ///
     /// ```
     pub fn seek(&mut self, key: &K) {
@@ -288,9 +313,9 @@ where
     /// }
     /// let mut iter = btree.iter();
     /// iter.seek_prev(&3);
-    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((3, 3))));
-    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((2, 2))));
-    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((1, 1))));
+    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((3, 3, None))));
+    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((2, 2, None))));
+    /// assert_eq!(iter.prev(), Some(std::sync::Arc::new((1, 1, None))));
     ///
     /// ```
     pub fn seek_prev(&mut self, key: &K) {
@@ -315,6 +340,12 @@ where
             }
         }
     }
+}
+
+fn now() -> Duration {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
 }
 
 #[derive(Clone, Debug)]
@@ -358,7 +389,15 @@ where
     /// If the key already exists, the old value is returned
     /// If the key does not exist, None is returned
     pub fn put(&mut self, k: K, v: V) -> Option<Item<K, V>> {
-        let (values, v) = self.root.put(self.m, k, v);
+        self.put_ttl(k, v, None)
+    }
+
+    /// Insert a key-value pair into the B-tree with ttl
+    /// ttl is expiration time
+    /// If the key already exists, the old value is returned
+    /// If the key does not exist, None is returned
+    pub fn put_ttl(&mut self, k: K, v: V, ttl: Option<Duration>) -> Option<Item<K, V>> {
+        let (values, v) = self.root.put(self.m, k, v, ttl);
 
         if values.len() > 1 {
             self.root = Node::instance(values);
@@ -509,6 +548,12 @@ where
     pub fn max(&mut self) -> Option<&Item<K, V>> {
         self.root.max()
     }
+
+    pub fn expir(&self) -> Self {
+        let root = self.root.expir();
+
+        BTree { m: self.m, root }
+    }
 }
 
 fn cmp<K, V>(k1: Option<&Item<K, V>>, k2: Option<&K>) -> std::cmp::Ordering
@@ -531,6 +576,8 @@ mod tests {
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
     use std::collections::BTreeMap;
+    use std::ops::Add;
+    use std::time::Duration;
 
     #[test]
     fn test_insert_and_compare() {
@@ -834,9 +881,9 @@ mod tests {
         btree.put(3, "c");
         btree.put(4, "d");
         btree.put(5, "e");
-        assert_eq!(btree.max(), Some(&std::sync::Arc::new((5, "e"))));
+        assert_eq!(btree.max(), Some(&std::sync::Arc::new((5, "e", None))));
 
-        assert_eq!(btree.min(), Some(&std::sync::Arc::new((1, "a"))));
+        assert_eq!(btree.min(), Some(&std::sync::Arc::new((1, "a", None))));
     }
 
     #[test]
@@ -915,5 +962,22 @@ mod tests {
 
         assert_eq!(tree.len(), btree.len());
         assert_eq!(tree.len(), btree_batch.len());
+    }
+
+    #[test]
+    fn test_expir() {
+        let mut btree = BTree::new(8);
+
+        for i in 0..10 {
+            btree.put_ttl(i, i, Some(crate::now().add(Duration::from_secs(i))));
+        }
+
+        println!("{:#?}", btree);
+
+        for i in 0..10 {
+            std::thread::sleep(Duration::from_secs(1));
+            btree = btree.expir();
+            println!("{}", btree.len());
+        }
     }
 }

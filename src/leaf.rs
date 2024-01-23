@@ -26,11 +26,11 @@ where
         }
     }
 
-    pub fn put(&self, m: usize, k: K, v: V) -> PutResult<K, V> {
-        let mut item = Arc::new((k, v));
+    pub fn put(&self, m: usize, k: K, v: V, ttl: Option<Duration>) -> PutResult<K, V> {
+        let mut item = Arc::new((k, v, ttl));
 
         if self.items.len() < m {
-            let mut items: Vec<Arc<(K, V)>> = self.items.clone();
+            let mut items: Vec<Item<K, V>> = self.items.clone();
             let old = Self::sort_insert(&mut items, item);
             return (vec![Self::instance(items)], old);
         }
@@ -73,6 +73,26 @@ where
         None
     }
 
+    pub fn expir(&self) -> Option<N<K, V>> {
+        let now = now();
+
+        let items: Vec<Item<K, V>> = self
+            .items
+            .iter()
+            .filter(|i| match i.2 {
+                Some(v) if v < now => false,
+                _ => true,
+            })
+            .map(|i| i.clone())
+            .collect();
+
+        if items.len() == self.items.len() {
+            None
+        } else {
+            Some(Self::instance(items))
+        }
+    }
+
     pub fn write(&self, m: usize, bw: BTreeMap<K, Action<V>>) -> Vec<N<K, V>> {
         let items = Self::merge_sort_arr(
             self.items.len() + bw.len(),
@@ -111,7 +131,7 @@ where
 
     fn merge_sort_arr(
         new_len: usize,
-        mut iter1: std::slice::Iter<'_, Arc<(K, V)>>,
+        mut iter1: std::slice::Iter<'_, Item<K, V>>,
         mut iter2: std::collections::btree_map::IntoIter<K, Action<V>>,
     ) -> Vec<Item<K, V>> {
         let mut result = Vec::with_capacity(new_len);
@@ -124,8 +144,8 @@ where
                     Some((_, Action::Delete)) => {
                         v2 = iter2.next();
                     }
-                    Some((k, Action::Put(v))) => {
-                        result.push(Arc::new((k, v)));
+                    Some((k, Action::Put(v, ttl))) => {
+                        result.push(Arc::new((k, v, ttl)));
                         v2 = iter2.next();
                     }
                     None => unreachable!(),
@@ -144,9 +164,10 @@ where
                             v1 = iter1.next().cloned();
                             v2 = iter2.next();
                         }
-                        Action::Put(_) => {
+                        Action::Put(_, _) => {
                             let (k, v) = v2.unwrap();
-                            result.push(Arc::new((k, v.value())));
+                            let (v, ttl) = v.value();
+                            result.push(Arc::new((k, v, ttl)));
                             v1 = iter1.next().cloned();
                             v2 = iter2.next();
                         }
@@ -155,9 +176,10 @@ where
                         Action::Delete => {
                             v2 = iter2.next();
                         }
-                        Action::Put(_) => {
+                        Action::Put(_, _) => {
                             let (k, v) = v2.unwrap();
-                            result.push(Arc::new((k, v.value())));
+                            let (v, ttl) = v.value();
+                            result.push(Arc::new((k, v, ttl)));
                             v2 = iter2.next();
                         }
                     },

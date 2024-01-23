@@ -5,6 +5,7 @@ use crate::*;
 #[derive(Debug)]
 pub struct Node<K, V> {
     pub key: Option<Item<K, V>>,
+    ttl: Option<Duration>,
     length: usize,
     pub children: Vec<N<K, V>>,
 }
@@ -19,18 +20,26 @@ where
         } else {
             children[0].key().cloned()
         };
+
+        let ttl = children.iter().filter_map(|c| c.ttl()).min().cloned();
+
         let length = children.iter().map(|v| v.len()).sum();
         Arc::new(BTreeType::Node(Self {
             key,
             length,
+            ttl,
             children,
         }))
     }
 
-    pub fn put(&self, m: usize, k: K, v: V) -> PutResult<K, V> {
+    pub fn put(&self, m: usize, k: K, v: V, ttl: Option<Duration>) -> PutResult<K, V> {
+        self.put_ttl(m, k, v, ttl)
+    }
+
+    pub fn put_ttl(&self, m: usize, k: K, v: V, ttl: Option<Duration>) -> PutResult<K, V> {
         let index = self.search_index(&k);
 
-        let (values, old) = self.children[index].put(m, k, v);
+        let (values, old) = self.children[index].put(m, k, v, ttl);
 
         let mut children = Vec::with_capacity(self.children.len() + values.len());
 
@@ -67,6 +76,28 @@ where
         children.extend(self.children[index + 1..].iter().cloned());
 
         Some((Self::instance(children), item))
+    }
+
+    pub fn expir(&self) -> Option<N<K, V>> {
+        let now = now();
+        match self.ttl {
+            Some(t) if t < now => {
+                let children = self
+                    .children
+                    .iter()
+                    .filter_map(|c| {
+                        let c = c.expir();
+                        if c.len() > 0 {
+                            Some(c)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                Some(Self::instance(children))
+            }
+            _ => None,
+        }
     }
 
     pub fn write(&self, m: usize, mut actions: BTreeMap<K, Action<V>>) -> Vec<N<K, V>> {
