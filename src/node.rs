@@ -21,9 +21,24 @@ where
             children[0].key().cloned()
         };
 
-        let ttl = children.iter().filter_map(|c| c.ttl()).min().cloned();
+        let mut ttl = None;
 
-        let length = children.iter().map(|v| v.len()).sum();
+        let mut length = 0;
+
+        for c in children.iter() {
+            if let Some(t) = c.ttl() {
+                if let Some(t1) = &ttl {
+                    if t < t1 {
+                        ttl = Some(*t);
+                    }
+                } else {
+                    ttl = Some(*t);
+                }
+            }
+
+            length += c.len();
+        }
+
         Arc::new(BTreeType::Node(Self {
             key,
             length,
@@ -33,10 +48,6 @@ where
     }
 
     pub fn put(&self, m: usize, k: K, v: V, ttl: Option<Duration>) -> PutResult<K, V> {
-        self.put_ttl(m, k, v, ttl)
-    }
-
-    pub fn put_ttl(&self, m: usize, k: K, v: V, ttl: Option<Duration>) -> PutResult<K, V> {
         let index = self.search_index(&k);
 
         let (values, old) = self.children[index].put(m, k, v, ttl);
@@ -178,5 +189,12 @@ where
                 }
             }
         }
+    }
+
+    pub(crate) fn ttl(&self) -> Option<&Duration>
+    where
+        K: Ord,
+    {
+        self.ttl.as_ref()
     }
 }

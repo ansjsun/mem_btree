@@ -13,7 +13,6 @@ description = "A Data Structure of BTree Implemented with Rust, support snapshot
 [dependencies]
 
 
-
 [dev-dependencies]
 rand = "0.8.5"
 
@@ -24,3 +23,6 @@ name = "bench"
 
 [[example]]
 name = "example"
+
+[[example]]
+name = "ttl"

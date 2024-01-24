@@ -1,4 +1,6 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::{collections::BTreeMap, ops::Add, time::Duration};
+
+use crate::now;
 
 #[derive(Debug)]
 pub enum Action<V> {
@@ -25,6 +27,11 @@ where
 {
     pub fn put(&mut self, key: K, value: V) {
         self.inner.insert(key, Action::Put(value, None));
+    }
+
+    pub fn put_ttl(&mut self, key: K, value: V, ttl: Duration) {
+        self.inner
+            .insert(key, Action::Put(value, Some(now().add(ttl))));
     }
 
     pub fn delete(&mut self, key: K) {

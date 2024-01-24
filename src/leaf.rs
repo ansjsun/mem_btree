@@ -79,11 +79,8 @@ where
         let items: Vec<Item<K, V>> = self
             .items
             .iter()
-            .filter(|i| match i.2 {
-                Some(v) if v < now => false,
-                _ => true,
-            })
-            .map(|i| i.clone())
+            .filter(|i| !matches!(i.2, Some(v) if v < now))
+            .cloned()
             .collect();
 
         if items.len() == self.items.len() {

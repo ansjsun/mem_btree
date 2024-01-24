@@ -38,6 +38,7 @@ mod node;
 use std::{
     collections::{BTreeMap, LinkedList},
     fmt::Debug,
+    ops::Add,
     sync::Arc,
     time::Duration,
 };
@@ -144,7 +145,7 @@ where
     fn ttl(&self) -> Option<&Duration> {
         match self {
             BTreeType::Leaf(leaf) => leaf.items.iter().filter_map(|i| i.2.as_ref()).min(),
-            BTreeType::Node(node) => node.children.iter().filter_map(|n| n.ttl()).min(),
+            BTreeType::Node(node) => node.ttl(),
         }
     }
 
@@ -389,22 +390,25 @@ where
     /// If the key already exists, the old value is returned
     /// If the key does not exist, None is returned
     pub fn put(&mut self, k: K, v: V) -> Option<Item<K, V>> {
-        self.put_ttl(k, v, None)
+        self.inner_put(k, v, None)
     }
 
     /// Insert a key-value pair into the B-tree with ttl
-    /// ttl is expiration time
+    /// ttl is expiration unix timestamp
     /// If the key already exists, the old value is returned
     /// If the key does not exist, None is returned
-    pub fn put_ttl(&mut self, k: K, v: V, ttl: Option<Duration>) -> Option<Item<K, V>> {
-        let (values, v) = self.root.put(self.m, k, v, ttl);
+    pub fn put_ttl(&mut self, k: K, v: V, ttl: Duration) -> Option<Item<K, V>> {
+        let ttl = now().add(ttl);
+        self.inner_put(k, v, Some(ttl))
+    }
 
+    fn inner_put(&mut self, k: K, v: V, ttl: Option<Duration>) -> Option<Item<K, V>> {
+        let (values, v) = self.root.put(self.m, k, v, ttl);
         if values.len() > 1 {
             self.root = Node::instance(values);
         } else {
             self.root = values[0].clone();
         }
-
         v
     }
 
@@ -965,19 +969,13 @@ mod tests {
     }
 
     #[test]
-    fn test_expir() {
-        let mut btree = BTree::new(8);
-
-        for i in 0..10 {
-            btree.put_ttl(i, i, Some(crate::now().add(Duration::from_secs(i))));
-        }
-
-        println!("{:#?}", btree);
-
-        for i in 0..10 {
-            std::thread::sleep(Duration::from_secs(1));
-            btree = btree.expir();
-            println!("{}", btree.len());
-        }
+    fn test_ttl() {
+        let mut btree = BTree::new(32);
+        btree.put_ttl(1, 1, Duration::from_secs(1));
+        btree = btree.expir();
+        assert!(btree.get(&1).is_some());
+        std::thread::sleep(Duration::from_secs(2));
+        btree = btree.expir();
+        assert_eq!(btree.get(&1), None);
     }
 }
