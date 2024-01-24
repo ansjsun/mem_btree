@@ -22,7 +22,7 @@ The main idea is to use Arc in a freewheeling way, and then in the process of wr
 * prev iter ✅
 * next iter ✅
 * batch_write ✅
-
+* ttl ✅
 
 ## bench
 5k kv insert

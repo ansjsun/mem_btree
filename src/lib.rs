@@ -580,7 +580,6 @@ mod tests {
     use rand::rngs::StdRng;
     use rand::{Rng, SeedableRng};
     use std::collections::BTreeMap;
-    use std::ops::Add;
     use std::time::Duration;
 
     #[test]
