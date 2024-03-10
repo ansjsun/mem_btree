@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use crate::*;
 
-#[derive(Debug)]
 pub struct Node<K, V> {
     pub key: Option<Item<K, V>>,
     ttl: Option<Duration>,

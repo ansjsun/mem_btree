@@ -55,7 +55,6 @@ pub type BatchWrite<K, V> = batch_write::BatchWrite<K, V>;
 
 pub type PutResult<K, V> = (Vec<N<K, V>>, Option<Item<K, V>>);
 
-#[derive(Debug)]
 pub enum BTreeType<K, V> {
     Leaf(Leaf<K, V>),
     Node(Node<K, V>),
@@ -167,19 +166,26 @@ where
     }
 }
 
-pub struct Iterator<K, V>
+pub struct Iter<K, V>
 where
-    K: Ord + Debug,
-    V: Debug,
+    K: Ord,
 {
     inner: BTree<K, V>,
     stack: LinkedList<(N<K, V>, i32)>,
 }
 
-impl<K, V> Iterator<K, V>
+impl<K: Ord, V> Iterator for Iter<K, V> {
+    type Item = Item<K, V>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next()
+    }
+}
+
+impl<K, V> Iter<K, V>
 where
-    K: Ord + Debug,
-    V: Debug,
+    K: Ord,
 {
     fn new(inner: BTree<K, V>) -> Self {
         let mut stack = LinkedList::new();
@@ -262,7 +268,7 @@ where
     }
 
     /// clear stack and push root node
-    /// it same as new Iterator
+    /// it same as new Iter
     pub fn reset(&mut self) {
         self.stack.clear();
         self.stack.push_back((self.inner.root.clone(), -1));
@@ -349,7 +355,7 @@ fn now() -> Duration {
         .unwrap()
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct BTree<K, V> {
     m: usize,
     root: N<K, V>,
@@ -357,8 +363,7 @@ pub struct BTree<K, V> {
 
 impl<K, V> BTree<K, V>
 where
-    K: Ord + Debug,
-    V: Debug,
+    K: Ord,
 {
     /// Create a new BTree with a given branching factor
     /// The branching factor is the maximum number of children a node can have
@@ -534,10 +539,10 @@ where
         self.root.is_empty()
     }
 
-    /// make a iterator for this btree
+    /// make a Iter for this btree
     /// default is seek_first
-    pub fn iter(&self) -> Iterator<K, V> {
-        Iterator::new(Self {
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter::new(Self {
             m: self.m,
             root: self.root.clone(),
         })
@@ -557,6 +562,12 @@ where
         let root = self.root.expir();
 
         BTree { m: self.m, root }
+    }
+}
+
+impl<K: Debug + Eq + Ord, V: Debug> Debug for BTree<K, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
     }
 }
 
@@ -976,5 +987,12 @@ mod tests {
         std::thread::sleep(Duration::from_secs(2));
         btree = btree.expir();
         assert_eq!(btree.get(&1), None);
+    }
+
+    struct A;
+    #[test]
+    fn test_no_debug_value() {
+        let mut btree = BTree::new(32);
+        btree.put(1, A {});
     }
 }

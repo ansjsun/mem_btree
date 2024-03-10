@@ -1,6 +1,5 @@
 use crate::*;
 
-#[derive(Debug)]
 pub struct Leaf<K, V> {
     pub items: Vec<Item<K, V>>,
 }
