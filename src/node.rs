@@ -69,11 +69,19 @@ where
         (vec![Self::instance(left), Self::instance(right)], old)
     }
 
-    pub fn get(&self, k: &K) -> Option<&V> {
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         self.children[self.search_index(k)].get(k)
     }
 
-    pub fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
+    pub fn remove<Q: ?Sized>(&self, k: &Q) -> Option<(N<K, V>, Item<K, V>)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         let index = self.search_index(k);
 
         let (child, item) = self.children[index].remove(k)?;
@@ -157,7 +165,11 @@ where
         self.length
     }
 
-    pub fn split_off(&self, k: &K) -> (N<K, V>, N<K, V>) {
+    pub fn split_off<Q: ?Sized>(&self, k: &Q) -> (N<K, V>, N<K, V>)
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         let index = self.search_index(k);
 
         let (l, r) = self.children[index].split_off(k);
@@ -177,7 +189,11 @@ where
         (Self::instance(left), Self::instance(right))
     }
 
-    pub fn search_index(&self, k: &K) -> usize {
+    pub fn search_index<Q: ?Sized>(&self, k: &Q) -> usize
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         match self.children.binary_search_by(|c| cmp(c.key(), Some(k))) {
             Ok(i) => i,
             Err(i) => {

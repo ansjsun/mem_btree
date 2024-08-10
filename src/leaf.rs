@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use crate::*;
 
 pub struct Leaf<K, V> {
@@ -51,19 +53,31 @@ where
         (vec![Self::instance(left), Self::instance(right)], old)
     }
 
-    pub fn get(&self, k: &K) -> Option<&V> {
-        if let Ok(i) = self.items.binary_search_by(|v| v.0.cmp(k)) {
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if let Ok(i) = self.items.binary_search_by(|v| v.0.borrow().cmp(k)) {
             return Some(&self.items[i].1);
         }
         None
     }
 
-    pub fn search_index(&self, k: &K) -> Result<usize, usize> {
-        self.items.binary_search_by(|v| v.0.cmp(k))
+    pub fn search_index<Q: ?Sized>(&self, k: &Q) -> Result<usize, usize>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        self.items.binary_search_by(|v| v.0.borrow().cmp(k))
     }
 
-    pub fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
-        if let Ok(i) = self.items.binary_search_by(|v| v.0.cmp(k)) {
+    pub fn remove<Q: ?Sized>(&self, k: &Q) -> Option<(N<K, V>, Item<K, V>)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if let Ok(i) = self.items.binary_search_by(|v| v.0.borrow().cmp(k)) {
             let mut items = Vec::with_capacity(self.items.len() - 1);
             items.extend_from_slice(&self.items[..i]);
             items.extend_from_slice(&self.items[i + 1..]);
@@ -112,10 +126,14 @@ where
         self.items.len()
     }
 
-    pub fn split_off(&self, k: &K) -> (N<K, V>, N<K, V>) {
+    pub fn split_off<Q: ?Sized>(&self, k: &Q) -> (N<K, V>, N<K, V>)
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         let index = self
             .items
-            .binary_search_by(|v| v.0.cmp(k))
+            .binary_search_by(|v| v.0.borrow().cmp(k))
             .unwrap_or_else(|i| i);
 
         let (left, right) = self.items.split_at(index);

@@ -36,6 +36,7 @@ mod leaf;
 mod node;
 
 use std::{
+    borrow::Borrow,
     collections::{BTreeMap, LinkedList},
     fmt::Debug,
     ops::Add,
@@ -87,14 +88,22 @@ where
         }
     }
 
-    fn get(&self, k: &K) -> Option<&V> {
+    fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         match self {
             BTreeType::Leaf(leaf) => leaf.get(k),
             BTreeType::Node(node) => node.get(k),
         }
     }
 
-    fn remove(&self, k: &K) -> Option<(N<K, V>, Item<K, V>)> {
+    fn remove<Q: ?Sized>(&self, k: &Q) -> Option<(N<K, V>, Item<K, V>)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         match self {
             BTreeType::Leaf(leaf) => leaf.remove(k),
             BTreeType::Node(node) => node.remove(k),
@@ -108,7 +117,11 @@ where
         }
     }
 
-    fn split_off(&self, k: &K) -> (N<K, V>, N<K, V>) {
+    fn split_off<Q: ?Sized>(&self, k: &Q) -> (N<K, V>, N<K, V>)
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         match self {
             BTreeType::Leaf(leaf) => leaf.split_off(k),
             BTreeType::Node(node) => node.split_off(k),
@@ -420,7 +433,11 @@ where
     /// Remove a key-value pair from the B-tree
     /// If the key exists, the old value is returned
     /// If the key does not exist, None is returned
-    pub fn remove(&mut self, k: &K) -> Option<Item<K, V>> {
+    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<Item<K, V>>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         let (node, item) = self.root.remove(k)?;
 
         if node.is_empty() {
@@ -489,7 +506,11 @@ where
     /// assert_eq!(right.len(), 3); // 3,4,5
     /// ```
     ///
-    pub fn split_off(&mut self, k: &K) -> BTree<K, V> {
+    pub fn split_off<Q: ?Sized>(&mut self, k: &Q) -> BTree<K, V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         let (left, right) = self.root.split_off(k);
         self.root = left;
 
@@ -513,7 +534,11 @@ where
     /// assert_eq!(btree.get(&1), Some(&1));
     /// assert_eq!(btree.get(&6), None);
     /// ```
-    pub fn get(&self, k: &K) -> Option<&V> {
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
         if self.root.len() == 0 {
             return None;
         }
@@ -571,12 +596,13 @@ impl<K: Debug + Eq + Ord, V: Debug> Debug for BTree<K, V> {
     }
 }
 
-fn cmp<K, V>(k1: Option<&Item<K, V>>, k2: Option<&K>) -> std::cmp::Ordering
+fn cmp<K, V, Q: ?Sized>(k1: Option<&Item<K, V>>, k2: Option<&Q>) -> std::cmp::Ordering
 where
-    K: Ord,
+    K: Borrow<Q> + Ord,
+    Q: Ord,
 {
     match (k1, k2) {
-        (Some(k1), Some(k2)) => k1.0.cmp(k2),
+        (Some(k1), Some(k2)) => k1.0.borrow().cmp(k2),
         (Some(_), None) => std::cmp::Ordering::Greater,
         (None, Some(_)) => std::cmp::Ordering::Less,
         (None, None) => std::cmp::Ordering::Equal,
