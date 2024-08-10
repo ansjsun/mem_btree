@@ -4,7 +4,7 @@ version = "0.3.2"
 edition = "2021"
 authors = ["Ansj <ansj-sun@163.com>"]
 license = "MIT OR Apache-2.0"
-categories = ["snapshot", "btree", "concurrency"]
+categories = ["fast snapshot", "memory btree", "concurrency"]
 description = "A Data Structure of BTree Implemented with Rust, support snapshot. not use any unsafe lib."
 repository = "https://github.com/ansjsun/mem_btree"
 
