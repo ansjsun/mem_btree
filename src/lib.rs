@@ -12,6 +12,7 @@
 //! * prev iter ✅
 //! * next iter ✅
 //! * batch_write ✅
+//! * persist ✅
 //!
 //! Licensed under either of
 //! * Apache License, Version 2.0,
@@ -34,6 +35,7 @@
 mod batch_write;
 mod leaf;
 mod node;
+pub mod persist;
 
 use std::{
     borrow::Borrow,
@@ -578,7 +580,7 @@ where
         self.root.key()
     }
 
-    /// Get the maximum key in the B-tree
+    /// Get the maximum key in the B-tree                             d
     pub fn max(&mut self) -> Option<&Item<K, V>> {
         self.root.max()
     }
